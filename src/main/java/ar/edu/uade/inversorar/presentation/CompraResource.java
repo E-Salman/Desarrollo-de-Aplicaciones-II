@@ -1,6 +1,8 @@
 package ar.edu.uade.inversorar.presentation;
 
-import ar.edu.uade.inversorar.business.*;
+import ar.edu.uade.inversorar.business.CompraService;
+import ar.edu.uade.inversorar.business.ReglaNegocioException;
+import ar.edu.uade.inversorar.business.dto.CompraRequest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;

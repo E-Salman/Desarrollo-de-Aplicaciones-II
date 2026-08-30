@@ -1,6 +1,10 @@
 package ar.edu.uade.inversorar.business;
 
 import ar.edu.uade.inversorar.data.*;
+import ar.edu.uade.inversorar.business.dto.CompraRequest;
+import ar.edu.uade.inversorar.business.dto.InstrumentoDto;
+import ar.edu.uade.inversorar.business.dto.PosicionDto;
+import ar.edu.uade.inversorar.business.dto.ResumenPortfolioDto;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;

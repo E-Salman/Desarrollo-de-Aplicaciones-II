@@ -2,6 +2,12 @@
 
 Primer componente desplegable de la aplicación, implementado en capas con Jakarta EE 10.
 
+## Documentación
+
+- [Tecnologías y versiones](docs/TECNOLOGIAS.md)
+- [Arquitectura en capas](docs/ARQUITECTURA.md)
+- [Requisitos funcionales](docs/REQUISITOS.md)
+
 ## Arquitectura
 
 `JSP/Servlet + JAX-RS` → `CompraService (@Stateless)` → `Repositories JPA` → `H2 de WildFly`.

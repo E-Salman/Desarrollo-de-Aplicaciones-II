@@ -1,7 +1,15 @@
 /target/
 /.tools/
 /.tools-maven.zip
+.factorypath
 .idea/
 .classpath
 .project
 .settings/
+*.log
+*.h2.db
+*.trace.db
+*.war.failed
+*.war.isdeploying
+*.war.undeployed
+*.war.dodeploy
