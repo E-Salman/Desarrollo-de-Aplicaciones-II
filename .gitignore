@@ -1,0 +1,7 @@
+/target/
+/.tools/
+/.tools-maven.zip
+.idea/
+.classpath
+.project
+.settings/
