@@ -67,14 +67,17 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
         Map<String, List<Operacion>> porTicker = new TreeMap<>();
         for (Operacion o : movimientos) porTicker.computeIfAbsent(o.getInstrumento().getTicker(), k -> new ArrayList<>()).add(o);
         List<PosicionDto> posiciones = new ArrayList<>();
-        BigDecimal capitalInvertido = BigDecimal.ZERO, patrimonioTotal = BigDecimal.ZERO, gananciaRealizada = BigDecimal.ZERO;
+        BigDecimal gananciaRealizada = BigDecimal.ZERO;
         for (List<Operacion> grupo : porTicker.values()) {
             grupo.sort(POR_FECHA_Y_CARGA);
             Instrumento i = grupo.get(0).getInstrumento();
+            String moneda = i.getMonedaCotizacion();
             BigDecimal cantidad = BigDecimal.ZERO, invertido = BigDecimal.ZERO;
             for (Operacion o : grupo) {
+                if (o.getOrdenDetalle() != null && !moneda.equals(o.getOrdenDetalle().getOrden().getMoneda()))
+                    throw new ReglaNegocioException("La moneda de cotización no coincide con la moneda de la orden registrada.");
                 if (o.getTipo() == TipoOperacion.VENTA) {
-                    BigDecimal promedioVigente = cantidad.signum() > 0 ? invertido.divide(cantidad, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                    BigDecimal promedioVigente = cantidad.signum() > 0 ? invertido.divide(cantidad, 10, RoundingMode.HALF_UP) : BigDecimal.ZERO;
                     BigDecimal costoVendido = o.getCantidad().multiply(promedioVigente);
                     gananciaRealizada = gananciaRealizada.add(o.getTotal().subtract(costoVendido));
                     invertido = invertido.subtract(costoVendido);
@@ -87,22 +90,38 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
             if (cantidad.signum() <= 0) continue;
             PosicionDto p = new PosicionDto();
             p.ticker = i.getTicker(); p.nombre = i.getNombre(); p.tipo = i.getTipo().name();
+            p.moneda = moneda; p.fechaCotizacion = i.getFechaCotizacion();
             p.cantidad = cantidad; p.invertido = invertido; p.precioActual = cotizaciones.cotizar(i);
-            p.precioPromedio = p.invertido.divide(p.cantidad, 4, RoundingMode.HALF_UP);
-            p.actual = p.cantidad.multiply(p.precioActual).setScale(4, RoundingMode.HALF_UP);
+            p.precioPromedio = p.invertido.divide(p.cantidad, 10, RoundingMode.HALF_UP);
+            p.actual = p.cantidad.multiply(p.precioActual).setScale(10, RoundingMode.HALF_UP);
             p.rendimiento = p.actual.subtract(p.invertido);
             p.rendimientoPorcentaje = porcentaje(p.rendimiento, p.invertido);
             posiciones.add(p);
-            capitalInvertido = capitalInvertido.add(p.invertido);
-            patrimonioTotal = patrimonioTotal.add(p.actual);
         }
         posiciones.sort(Comparator.comparing(p -> p.nombre));
         ResumenPortfolioDto r = new ResumenPortfolioDto();
+        r.posiciones = posiciones;
+        BigDecimal capitalInvertido = BigDecimal.ZERO, patrimonioTotal = BigDecimal.ZERO;
+        for (PosicionDto p : posiciones) {
+            capitalInvertido = capitalInvertido.add(p.invertido);
+            patrimonioTotal = patrimonioTotal.add(p.actual);
+            TotalesMonedaDto total = r.totalesPorMoneda.computeIfAbsent(p.moneda, m -> new TotalesMonedaDto());
+            total.capitalInvertido = total.capitalInvertido.add(p.invertido);
+            total.patrimonioTotal = total.patrimonioTotal.add(p.actual);
+        }
         r.capitalInvertido = capitalInvertido; r.patrimonioTotal = patrimonioTotal;
         r.gananciaRealizada = gananciaRealizada;
-        r.posiciones = posiciones;
-        r.gananciaTotal = r.patrimonioTotal.subtract(r.capitalInvertido).add(gananciaRealizada);
+        r.gananciaTotal = patrimonioTotal.subtract(capitalInvertido).add(gananciaRealizada);
         r.rendimientoPorcentaje = porcentaje(r.gananciaTotal, r.capitalInvertido);
+        r.totalesPorMoneda.forEach((moneda, total) -> {
+            total.gananciaTotal = total.patrimonioTotal.subtract(total.capitalInvertido);
+            total.rendimientoPorcentaje = porcentaje(total.gananciaTotal, total.capitalInvertido);
+        });
+        if (r.totalesPorMoneda.size() == 1) r.moneda = r.totalesPorMoneda.keySet().iterator().next();
+        if (r.totalesPorMoneda.size() > 1) {
+            r.moneda = null; r.capitalInvertido = null; r.patrimonioTotal = null;
+            r.gananciaTotal = null; r.rendimientoPorcentaje = null;
+        }
         return r;
     }
     private BigDecimal porcentaje(BigDecimal ganancia, BigDecimal costo) {

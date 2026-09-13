@@ -9,8 +9,10 @@ import java.math.BigDecimal;
 
 @Singleton @Startup
 public class DatosIniciales {
+    @Inject private ConfiguracionApp configuracion;
     @Inject private InstrumentoRepository instrumentos;
     @PostConstruct public void cargar() {
+        if (configuracion.catalogoMysql()) return;
 
         if (!instrumentos.listar().isEmpty()) return;
         alta("Apple", "AAPL", TipoInstrumento.ACCION, "195"); alta("Microsoft", "MSFT", TipoInstrumento.ACCION, "420"); alta("Alphabet", "GOOGL", TipoInstrumento.ACCION, "175"); alta("Amazon", "AMZN", TipoInstrumento.ACCION, "185"); alta("Tesla", "TSLA", TipoInstrumento.ACCION, "250"); alta("Nvidia", "NVDA", TipoInstrumento.ACCION, "498"); alta("Meta", "META", TipoInstrumento.ACCION, "520");

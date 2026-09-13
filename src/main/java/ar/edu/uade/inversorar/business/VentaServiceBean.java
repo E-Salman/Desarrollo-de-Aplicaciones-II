@@ -28,8 +28,8 @@ public class VentaServiceBean implements VentaService {
         if (request.cantidad == null || request.cantidad.signum() <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor que cero.");
         if (request.precioUnitario == null || request.precioUnitario.signum() <= 0) throw new ReglaNegocioException("El precio unitario debe ser mayor que cero.");
         if (request.fecha == null || request.fecha.isAfter(LocalDate.now())) throw new ReglaNegocioException("La fecha de venta es inválida.");
-        validarDecimal(request.cantidad, 6, 13, "cantidad");
-        validarDecimal(request.precioUnitario, 4, 15, "precio");
+        validarDecimal(request.cantidad, 10, 13, "cantidad");
+        validarDecimal(request.precioUnitario, 10, 15, "precio");
         String ticker = request.ticker.trim().toUpperCase(Locale.ROOT);
         Instrumento instrumento = instrumentos.buscarPorTicker(ticker)
                 .orElseThrow(() -> new ReglaNegocioException("El instrumento seleccionado no existe."));

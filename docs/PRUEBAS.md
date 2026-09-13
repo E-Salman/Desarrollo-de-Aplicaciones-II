@@ -2,11 +2,19 @@
 
 ## Unitarias
 
-`mvn test`: 13 pruebas JUnit/Mockito en ComponentesTest y PortfolioSesionTest, sin fallos ni errores. `mvn package`: BUILD SUCCESS y WAR generado. Java 17, Maven 3.9.9. También se probó el empaquetado `demo-init`. El perfil `mysql` se verifica como configuración del WAR, sin conexión a la BD del equipo.
+`mvn test`: 21 pruebas JUnit/Mockito en ComponentesTest y PortfolioSesionTest, sin fallos ni errores. `mvn package`: BUILD SUCCESS y WAR generado. Java 17, Maven 3.9.9. También se probó el empaquetado `demo-init`. El perfil `mysql` también se desplegó y verificó contra la importación local del SQL del equipo.
 
-Cobertura: promedio ponderado, vacío, pérdida, Strategy sustituible, consulta por identidad, compra y total, entradas inválidas sin persistencia, simulador aislado y copias defensivas, suma de porcentajes y resolución por principal/rol. Estas pruebas no reemplazan las del contenedor.
+Cobertura: promedio ponderado, vacío, pérdida, Strategy sustituible, consulta por identidad, compra y total, entradas inválidas sin persistencia, simulador aislado y copias defensivas, suma de porcentajes y resolución por principal/rol. Se agregaron casos para separación de monedas, precios de diez decimales y rechazo de compras sin datos suficientes. Estas pruebas no reemplazan las del contenedor.
 
-## Integración real
+## Integración MySQL vigente
+
+38 verificaciones HTTP/SQL correctas: catálogo completo, búsqueda, históricos, fecha sin desplazamiento horario, compra válida, validaciones, promedio ponderado, totales por moneda, identidad/rol y persistencia al cerrar la sesión. Se comprobó además que las compras sobreviven a un redespliegue explícito del WAR. El SQL original conservó sus conteos; se limpiaron solamente los registros de las identidades QA. La aplicación local usa MySQL en 18080.
+
+La comprobación de navegador más reciente verificó que Comprar abre directamente el formulario compacto, con Acciones, Bonos, CEDEARs y Monedas visibles pero vacíos, y 1.365 instrumentos bajo Criptomonedas. El catálogo y los históricos son opcionales. El script de abajo es específico para la demo H2: usa AAPL y precios ficticios, por lo que no corresponde ejecutarlo sin adaptar contra MySQL.
+
+Para probar MySQL en otra máquina: seguir MYSQL.md, usar cuentas de prueba separadas, registrar un instrumento con precio y moneda disponibles, comprobar la fila en operaciones, cerrar la sesión y volver a consultar. No usar las cuentas ni las compras reales como datos de pruebas destructivas. El extracto de resultados y callbacks está en EVIDENCIA.md.
+
+## Integración histórica H2
 
 Se desplegó el WAR en WildFly 30.0.1.Final con H2 vacío, usando un servidor separado en localhost:28080. Se crearon cuentas efímeras de prueba fuera del repositorio. No se usó la BD del equipo.
 
@@ -43,4 +51,10 @@ Las evidencias sanitizadas de esta ejecución están en `EVIDENCIA.md`. Se verif
 
 ## Pendiente fuera de esta rama
 
-Probar migración al esquema MySQL del compañero, login definitivo y Venta. Completar casos de venta parcial/total, concurrencia de stock, costo remanente y ganancias realizadas después de integrar esos componentes. La entrega general de tres componentes no se declara completa aquí.
+Integrar login definitivo y Venta; mantener los enlaces con usuarios, órdenes y movimientos al incorporar esas funciones. Completar casos de venta parcial/total, concurrencia de stock, costo remanente y ganancias realizadas después de integrar esos componentes. La entrega general de tres componentes no se declara completa aquí.
+
+## Registro de órdenes
+
+21 pruebas unitarias en la última construcción y 20 verificaciones HTTP/SQL específicas de órdenes. Se verificó rechazo de cuentas sin usuario vinculado; creación atómica de orden, detalle y movimiento; precisión y moneda; ausencia de doble conteo; aislamiento entre usuarios y persistencia tras cerrar sesión. Un trigger temporal limitado al portfolio QA forzó un error en la escritura de operaciones: la transacción revirtió las dos inserciones anteriores. El trigger se retiró inmediatamente y se limpiaron sólo los registros QA.
+
+La migración de compras previas se ejecutó dos veces: la segunda encontró cero pendientes. Se comprobó que los importes originales y el resumen se conservaron. El script de estructura también fue ejecutado en una base temporal vacía, con 11 tablas y 13 FK.
