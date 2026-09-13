@@ -5,6 +5,9 @@ import ar.edu.uade.inversorar.business.dto.CompraRequest;
 import ar.edu.uade.inversorar.business.dto.InstrumentoDto;
 import ar.edu.uade.inversorar.business.dto.PosicionDto;
 import ar.edu.uade.inversorar.business.dto.ResumenPortfolioDto;
+import ar.edu.uade.inversorar.business.dto.VentaRequest;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -13,27 +16,66 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Stateless
-public class CompraServiceBean implements CompraService {
+public class OperacionServiceBean implements OperacionService {
+    private static final Logger LOG = Logger.getLogger(OperacionServiceBean.class.getName());
     private static final Long PORTFOLIO_DEMO_ID = 1L;
     @Inject private InstrumentoRepository instrumentos;
     @Inject private PortfolioRepository portfolios;
     @Inject private OperacionRepository operaciones;
+    @Inject private CompraStrategy compraStrategy;
+    @Inject private VentaStrategy ventaStrategy;
+    private Map<TipoOperacion, OperacionStrategy> estrategiasPorTipo;
+
+    /** El contenedor invoca este callback luego de inyectar las dependencias y antes de servir el primer pedido. */
+    @PostConstruct
+    public void init() {
+        estrategiasPorTipo = new EnumMap<>(TipoOperacion.class);
+        estrategiasPorTipo.put(compraStrategy.getTipo(), compraStrategy);
+        estrategiasPorTipo.put(ventaStrategy.getTipo(), ventaStrategy);
+        LOG.fine(() -> "OperacionServiceBean inicializado con estrategias: " + estrategiasPorTipo.keySet());
+    }
+
+    /** El contenedor invoca este callback antes de destruir la instancia del bean. */
+    @PreDestroy
+    public void destruir() {
+        LOG.fine("OperacionServiceBean destruido por el contenedor.");
+    }
 
     @Override
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public void registrarCompra(CompraRequest request) {
-        if (request == null || request.ticker == null || request.ticker.isBlank()) throw new ReglaNegocioException("Debe seleccionar un instrumento.");
-        if (request.cantidad == null || request.cantidad.signum() <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor que cero.");
-        if (request.precioUnitario == null || request.precioUnitario.signum() <= 0) throw new ReglaNegocioException("El precio unitario debe ser mayor que cero.");
-        if (request.fecha == null || request.fecha.isAfter(LocalDate.now())) throw new ReglaNegocioException("La fecha de compra es inválida.");
-        Instrumento instrumento = instrumentos.buscarPorTicker(request.ticker.trim().toUpperCase())
+        String ticker = request == null ? null : request.ticker;
+        BigDecimal cantidad = request == null ? null : request.cantidad;
+        BigDecimal precioUnitario = request == null ? null : request.precioUnitario;
+        LocalDate fecha = request == null ? null : request.fecha;
+        registrar(TipoOperacion.COMPRA, ticker, cantidad, precioUnitario, fecha);
+    }
+
+    @Override
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
+    public void registrarVenta(VentaRequest request) {
+        String ticker = request == null ? null : request.ticker;
+        BigDecimal cantidad = request == null ? null : request.cantidad;
+        BigDecimal precioUnitario = request == null ? null : request.precioUnitario;
+        LocalDate fecha = request == null ? null : request.fecha;
+        registrar(TipoOperacion.VENTA, ticker, cantidad, precioUnitario, fecha);
+    }
+
+    private void registrar(TipoOperacion tipo, String ticker, BigDecimal cantidad, BigDecimal precioUnitario, LocalDate fecha) {
+        if (ticker == null || ticker.isBlank()) throw new ReglaNegocioException("Debe seleccionar un instrumento.");
+        String tickerNormalizado = ticker.trim().toUpperCase();
+        Instrumento instrumento = instrumentos.buscarPorTicker(tickerNormalizado)
                 .orElseThrow(() -> new ReglaNegocioException("El instrumento seleccionado no existe."));
         Portfolio portfolio = portfolios.buscar(PORTFOLIO_DEMO_ID);
         if (portfolio == null) throw new ReglaNegocioException("No existe el portfolio de demostración.");
-        operaciones.guardar(new Operacion(portfolio, instrumento, request.cantidad, request.precioUnitario, request.fecha));
+        List<Operacion> historial = operaciones.porPortfolioYTicker(PORTFOLIO_DEMO_ID, tickerNormalizado);
+        OperacionStrategy estrategia = estrategiasPorTipo.get(tipo);
+        estrategia.validar(instrumento, cantidad, precioUnitario, fecha, historial);
+        operaciones.guardar(estrategia.crear(portfolio, instrumento, cantidad, precioUnitario, fecha));
     }
 
     @Override
@@ -41,20 +83,41 @@ public class CompraServiceBean implements CompraService {
 
     @Override
     public ResumenPortfolioDto obtenerResumen(Long portfolioId) {
-        List<Operacion> compras = operaciones.porPortfolio(portfolioId);
-        Map<String, List<Operacion>> porTicker = compras.stream().collect(Collectors.groupingBy(o -> o.getInstrumento().getTicker()));
+        List<Operacion> historial = operaciones.porPortfolio(portfolioId);
+        Map<String, List<Operacion>> porTicker = historial.stream().collect(Collectors.groupingBy(o -> o.getInstrumento().getTicker()));
         List<PosicionDto> posiciones = new ArrayList<>();
-        BigDecimal invertido = BigDecimal.ZERO, actual = BigDecimal.ZERO;
+        BigDecimal invertidoTotal = BigDecimal.ZERO, actualTotal = BigDecimal.ZERO, gananciaRealizadaTotal = BigDecimal.ZERO;
         for (List<Operacion> grupo : porTicker.values()) {
-            Operacion primera = grupo.get(0); BigDecimal cantidad = BigDecimal.ZERO, total = BigDecimal.ZERO;
-            for (Operacion o : grupo) { cantidad = cantidad.add(o.getCantidad()); total = total.add(o.getTotal()); }
-            PosicionDto p = new PosicionDto(); p.nombre = primera.getInstrumento().getNombre(); p.ticker = primera.getInstrumento().getTicker(); p.tipo = primera.getInstrumento().getTipo().name();
-            p.cantidad = cantidad; p.invertido = total; p.precioPromedio = total.divide(cantidad, 4, RoundingMode.HALF_UP);
-            p.actual = cantidad.multiply(primera.getInstrumento().getCotizacionActual()); p.rendimiento = p.actual.subtract(p.invertido);
-            posiciones.add(p); invertido = invertido.add(p.invertido); actual = actual.add(p.actual);
+            List<Operacion> cronologico = grupo.stream()
+                    .sorted(Comparator.comparing(Operacion::getFecha).thenComparing(Operacion::getId))
+                    .toList();
+            Instrumento instrumento = cronologico.get(0).getInstrumento();
+            BigDecimal cantidad = BigDecimal.ZERO, invertido = BigDecimal.ZERO;
+            for (Operacion o : cronologico) {
+                if (o.getTipo() == TipoOperacion.VENTA) {
+                    BigDecimal precioPromedioVigente = cantidad.signum() > 0 ? invertido.divide(cantidad, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                    BigDecimal costoVendido = o.getCantidad().multiply(precioPromedioVigente);
+                    gananciaRealizadaTotal = gananciaRealizadaTotal.add(o.getTotal().subtract(costoVendido));
+                    invertido = invertido.subtract(costoVendido);
+                    cantidad = cantidad.subtract(o.getCantidad());
+                } else {
+                    cantidad = cantidad.add(o.getCantidad());
+                    invertido = invertido.add(o.getTotal());
+                }
+            }
+            if (cantidad.signum() <= 0) continue;
+            PosicionDto p = new PosicionDto();
+            p.nombre = instrumento.getNombre(); p.ticker = instrumento.getTicker(); p.tipo = instrumento.getTipo().name();
+            p.cantidad = cantidad; p.invertido = invertido; p.precioPromedio = invertido.divide(cantidad, 4, RoundingMode.HALF_UP);
+            p.actual = cantidad.multiply(instrumento.getCotizacionActual()); p.rendimiento = p.actual.subtract(p.invertido);
+            posiciones.add(p); invertidoTotal = invertidoTotal.add(p.invertido); actualTotal = actualTotal.add(p.actual);
         }
         posiciones.sort(Comparator.comparing(p -> p.nombre));
-        ResumenPortfolioDto resumen = new ResumenPortfolioDto(); resumen.capitalInvertido = invertido; resumen.patrimonioTotal = actual; resumen.gananciaTotal = actual.subtract(invertido); resumen.posiciones = posiciones;
+        ResumenPortfolioDto resumen = new ResumenPortfolioDto();
+        resumen.capitalInvertido = invertidoTotal; resumen.patrimonioTotal = actualTotal;
+        resumen.gananciaRealizada = gananciaRealizadaTotal;
+        resumen.gananciaTotal = actualTotal.subtract(invertidoTotal).add(gananciaRealizadaTotal);
+        resumen.posiciones = posiciones;
         return resumen;
     }
 }

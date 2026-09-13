@@ -1,4 +1,4 @@
-# InversorAR — Componente Compra de Instrumentos
+# InversorAR — Componente Compra/Venta de Instrumentos
 
 Primer componente desplegable de la aplicación, implementado en capas con Jakarta EE 10.
 
@@ -7,18 +7,22 @@ Primer componente desplegable de la aplicación, implementado en capas con Jakar
 - [Tecnologías y versiones](docs/TECNOLOGIAS.md)
 - [Arquitectura en capas](docs/ARQUITECTURA.md)
 - [Requisitos funcionales](docs/REQUISITOS.md)
+- [Funcionamiento de la venta](docs/VENTA.md)
 
 ## Arquitectura
 
-`JSP/Servlet + JAX-RS` → `CompraService (@Stateless)` → `Repositories JPA` → `H2 de WildFly`.
+`JSP/Servlet + JAX-RS` → `OperacionService (@Stateless)` → `CompraStrategy/VentaStrategy` → `Repositories JPA` → `H2 de WildFly`.
 
 La pantalla se abre en `/inversorar/dashboard`. La API expone:
 
 - `GET /inversorar/api/instrumentos`
 - `POST /inversorar/api/compras`
+- `POST /inversorar/api/ventas`
 - `GET /inversorar/api/portfolios/1/resumen`
 
-La compra recibe `ticker`, `cantidad`, `precioUnitario` y `fecha`. El servidor valida los valores y calcula el total. El precio puede diferir de la cotización de catálogo porque representa el precio real de la operación.
+La compra y la venta reciben `ticker`, `cantidad`, `precioUnitario` y `fecha`. El servidor valida los valores y calcula el total; en una venta, además, valida que no se supere la cantidad poseída del instrumento. El precio puede diferir de la cotización de catálogo porque representa el precio real de la operación.
+
+El resumen del portfolio calcula, por posición, la cantidad e invertido a costo promedio ponderado (una venta parcial reduce ambos proporcionalmente, dejando `rendimiento` como la ganancia potencial sobre lo que sigue en cartera). La ganancia ya realizada en ventas se acumula aparte y se suma en el KPI `gananciaTotal` del portfolio, sin perderse cuando una posición se vende por completo.
 
 ## Requisitos y despliegue
 
@@ -44,6 +48,16 @@ POST /inversorar/api/compras
   "cantidad": 10,
   "precioUnitario": 180,
   "fecha": "2026-08-30"
+}
+```
+
+```json
+POST /inversorar/api/ventas
+{
+  "ticker": "AAPL",
+  "cantidad": 4,
+  "precioUnitario": 195,
+  "fecha": "2026-09-10"
 }
 ```
 

@@ -1,3 +1,3 @@
 package ar.edu.uade.inversorar.data;
 
-public enum TipoOperacion { COMPRA }
+public enum TipoOperacion { COMPRA, VENTA }

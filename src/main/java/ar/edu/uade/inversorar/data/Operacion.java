@@ -16,12 +16,13 @@ public class Operacion {
     @Column(nullable = false, precision = 19, scale = 4) private BigDecimal total;
     @Column(nullable = false) private LocalDate fecha;
     protected Operacion() { }
-    public Operacion(Portfolio portfolio, Instrumento instrumento, BigDecimal cantidad, BigDecimal precioUnitario, LocalDate fecha) {
-        this.portfolio = portfolio; this.instrumento = instrumento; this.tipo = TipoOperacion.COMPRA;
+    public Operacion(Portfolio portfolio, Instrumento instrumento, TipoOperacion tipo, BigDecimal cantidad, BigDecimal precioUnitario, LocalDate fecha) {
+        this.portfolio = portfolio; this.instrumento = instrumento; this.tipo = tipo;
         this.cantidad = cantidad; this.precioUnitario = precioUnitario; this.total = cantidad.multiply(precioUnitario); this.fecha = fecha;
     }
     public Long getId() { return id; } public Portfolio getPortfolio() { return portfolio; }
-    public Instrumento getInstrumento() { return instrumento; } public BigDecimal getCantidad() { return cantidad; }
+    public Instrumento getInstrumento() { return instrumento; } public TipoOperacion getTipo() { return tipo; }
+    public BigDecimal getCantidad() { return cantidad; }
     public BigDecimal getPrecioUnitario() { return precioUnitario; } public BigDecimal getTotal() { return total; }
     public LocalDate getFecha() { return fecha; }
 }
