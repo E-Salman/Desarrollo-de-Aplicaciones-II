@@ -1,8 +1,28 @@
 # InversorAR - Compra y Portfolio
 
-Rama `integracion_entrega`. Componentes de negocio acordados: **Compra, Venta y Portfolio**. Compra es `@Stateless`; Portfolio es `@Stateful` y reúne la consulta de inversiones persistentes y una simulación temporal de distribución. La simulación es una funcionalidad de Portfolio, no un cuarto componente. Venta pertenece al trabajo del compañero y sigue pendiente de integración.
+Rama `mysql_componente`, creada desde `integracion_entrega`. Componentes de negocio acordados: **Compra, Venta y Portfolio**. Compra es `@Stateless`; Portfolio es `@Stateful` y reúne la consulta de inversiones persistentes y una simulación temporal de distribución. La simulación es una funcionalidad de Portfolio, no un cuarto componente. Venta pertenece al trabajo del compañero y sigue pendiente de integración.
 
 Portfolio conserva capital y porcentajes por sesión HTTP. Relee las operaciones en cada consulta: una compra actualiza las posiciones sin perder la simulación. `PortfolioSesion` mantiene una única referencia EJB por sesión y rechaza cambios de identidad sobre la misma cookie. No inyectar PortfolioService directamente en cada recurso REST: utilizar PortfolioSesion.
+
+## Componentes y patrones
+
+Stateful y Stateless son tipos de EJB; Strategy es un patrón de diseño. No son alternativas entre sí.
+
+| Componente | Tipo y responsabilidad | Patrones |
+|---|---|---|
+| Compra | CompraServiceBean @Stateless: catálogo, validación y registro de compras | Repository/DAO |
+| Portfolio | PortfolioServiceBean @Stateful: consultas persistentes y planificación temporal por sesión | Service Facade, Repository/DAO y Strategy de cotización |
+| Venta, fuera de esta rama | En joaco (88f85f5), OperacionServiceBean @Stateless delega las reglas en VentaStrategy; pendiente de integración | Repository/DAO y Strategy de operación |
+
+[Texto breve para el equipo](docs/RESUMEN_COMPONENTES.md), [decisiones técnicas](docs/TECNICO.md) y [evidencia real de ciclo de vida](docs/EVIDENCIA.md). Compra y Portfolio tienen callbacks @PostConstruct/@PreDestroy; Portfolio también tiene @Remove. Los registros del contenedor documentan su ejecución.
+
+## MySQL en esta rama
+
+El perfil MySQL utiliza el catálogo recibido del equipo y guarda las compras en la misma base. Las tablas `portfolios` y `operaciones` se crean mediante `config/mysql-compras.sql`. Las órdenes se crean con `config/mysql-ordenes.sql` y se vinculan mediante `config/mysql-vincular-ordenes.sql`. Cada compra guarda una orden, su detalle y un movimiento enlazado en la misma transacción. No agrega instrumentos ni cotizaciones de demostración. Comprar abre el formulario compacto con selección por tipo e instrumento; el catálogo y los históricos son una consulta opcional. Criptomonedas tiene los datos recibidos; Acciones, Bonos, CEDEARs y Monedas permanecen visibles y vacíos. Los importes se agrupan por moneda.
+
+Estructura completa para el equipo: [diccionario de las 11 tablas y sus relaciones](docs/MYSQL_ESQUEMA.md) y [SQL de estructura sin datos](config/mysql-esquema.sql). El primero indica el orden de migraciones, la vinculación de usuarios y cómo migrar compras anteriores sin duplicarlas.
+
+Configuración, permisos mínimos, cambios de API y evidencia: [MySQL](docs/MYSQL.md). El precio de una compra se expresa en la moneda del par; BTCUSDT cotiza en USDT, no se presupone USD. Las compras son registros, sin saldo de billetera ni ejecución en mercados.
 
 ## Ejecutar
 
@@ -31,6 +51,8 @@ Todas las rutas siguientes llevan prefijo `/inversorar/api` y requieren `USUARIO
 | Método y ruta | Resultado |
 |---|---|
 | GET `/instrumentos` | Catálogo disponible |
+| GET `/catalogo?q=BTCUSDT&pagina=0` | Catálogo MySQL, 50 resultados por página |
+| GET `/catalogo/{id}/precios?limite=90` | Precios históricos, hasta 365 registros |
 | POST `/compras` | Registra compra; 201 con resumen actualizado |
 | GET `/portfolio/resumen` | Capital invertido, patrimonio, ganancia, rendimiento porcentual y posiciones |
 | GET `/portfolio/posiciones` | Cantidad, precio promedio, cotización, costo, valor y rendimiento por instrumento |
@@ -40,7 +62,7 @@ Todas las rutas siguientes llevan prefijo `/inversorar/api` y requieren `USUARIO
 | DELETE `/portfolio/simulacion` | Reinicia sólo el plan temporal; 204 |
 | DELETE `/portfolio/sesion` | Invalida la sesión HTTP y retira el EJB Portfolio mediante @Remove; 204 |
 
-Ejemplo de compra: `{"ticker":"AAPL","cantidad":10,"precioUnitario":180,"fecha":"2026-09-01"}`. La fecha debe ser válida y no futura. Errores de negocio: 400. Sin autenticación: 401. Sin rol: 403.
+Ejemplo MySQL: `{"ticker":"BTCUSDT","cantidad":"0.002","precioUnitario":"70000","fecha":"2026-09-01"}`. AAPL corresponde al catálogo ficticio del perfil H2. La fecha debe ser válida y no futura. Errores de negocio: 400. Sin autenticación: 401. Sin rol: 403.
 
 El cliente no envía un portfolioId. La antigua ruta `/portfolios/1/resumen` se retiró para impedir consultas a carteras ajenas. El dashboard se actualizó al contrato nuevo. La planificación requiere conservar JSESSIONID y no persiste inversiones. Las rutas anteriores `/api/simulador` se conservan como alias HTTP del mismo Portfolio, sin otro EJB. Su DELETE ahora reinicia el plan sin invalidar toda la sesión; para cerrar la conversación usar DELETE `/api/portfolio/sesion`. El cierre no borra operaciones de la base.
 
@@ -53,4 +75,4 @@ El cliente no envía un portfolioId. La antigua ruta `/portfolios/1/resumen` se 
 
 Patrones presentes: Repository/DAO, Service Facade y Strategy de cotización. Compra usa EJB stateless y transacción REQUIRED; Portfolio usa EJB stateful con callbacks visibles y cierre explícito; sus consultas tienen transacción REQUIRED y la planificación NOT_SUPPORTED.
 
-**Entrega general pendiente:** integrar y demostrar Venta, integrar el login del equipo y ejecutar con el esquema MySQL definitivo. No se declara terminada Venta ni se cuenta la simulación como componente adicional.
+**Entrega general pendiente:** integrar y demostrar Venta, integrar el login del equipo y acordar con el equipo la relación definitiva con usuarios. MySQL ya se usa para el catálogo recibido y el guardado de compras; ver [configuración y pruebas](docs/MYSQL.md). No se declara terminada Venta ni se cuenta la simulación como componente adicional.

@@ -70,8 +70,11 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
                 PosicionDto nueva = new PosicionDto(); nueva.ticker = ticker;
                 nueva.nombre = i.getNombre(); nueva.tipo = i.getTipo().name();
                 nueva.cantidad = BigDecimal.ZERO; nueva.invertido = BigDecimal.ZERO;
-                nueva.precioActual = cotizaciones.cotizar(i); return nueva;
+                nueva.precioActual = cotizaciones.cotizar(i);
+                nueva.moneda = i.getMonedaCotizacion(); nueva.fechaCotizacion = i.getFechaCotizacion(); return nueva;
             });
+            if (o.getOrdenDetalle() != null && !p.moneda.equals(o.getOrdenDetalle().getOrden().getMoneda()))
+                throw new ReglaNegocioException("La moneda de cotización no coincide con la moneda de la orden registrada.");
             p.cantidad = p.cantidad.add(o.getCantidad()); p.invertido = p.invertido.add(o.getTotal());
         }
         ResumenPortfolioDto r = new ResumenPortfolioDto();
@@ -79,15 +82,27 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
         r.posiciones = new ArrayList<>(posiciones.values());
         r.posiciones.sort(Comparator.comparing(p -> p.nombre));
         for (PosicionDto p : r.posiciones) {
-            p.precioPromedio = p.invertido.divide(p.cantidad, 4, RoundingMode.HALF_UP);
-            p.actual = p.cantidad.multiply(p.precioActual).setScale(4, RoundingMode.HALF_UP);
+            p.precioPromedio = p.invertido.divide(p.cantidad, 10, RoundingMode.HALF_UP);
+            p.actual = p.cantidad.multiply(p.precioActual).setScale(10, RoundingMode.HALF_UP);
             p.rendimiento = p.actual.subtract(p.invertido);
             p.rendimientoPorcentaje = porcentaje(p.rendimiento, p.invertido);
             r.capitalInvertido = r.capitalInvertido.add(p.invertido);
             r.patrimonioTotal = r.patrimonioTotal.add(p.actual);
+            TotalesMonedaDto total = r.totalesPorMoneda.computeIfAbsent(p.moneda, m -> new TotalesMonedaDto());
+            total.capitalInvertido = total.capitalInvertido.add(p.invertido);
+            total.patrimonioTotal = total.patrimonioTotal.add(p.actual);
         }
         r.gananciaTotal = r.patrimonioTotal.subtract(r.capitalInvertido);
         r.rendimientoPorcentaje = porcentaje(r.gananciaTotal, r.capitalInvertido);
+        r.totalesPorMoneda.forEach((moneda, total) -> {
+            total.gananciaTotal = total.patrimonioTotal.subtract(total.capitalInvertido);
+            total.rendimientoPorcentaje = porcentaje(total.gananciaTotal, total.capitalInvertido);
+        });
+        if (r.totalesPorMoneda.size() == 1) r.moneda = r.totalesPorMoneda.keySet().iterator().next();
+        if (r.totalesPorMoneda.size() > 1) {
+            r.moneda = null; r.capitalInvertido = null; r.patrimonioTotal = null;
+            r.gananciaTotal = null; r.rendimientoPorcentaje = null;
+        }
         return r;
     }
     private BigDecimal porcentaje(BigDecimal ganancia, BigDecimal costo) {

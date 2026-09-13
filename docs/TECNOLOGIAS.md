@@ -7,7 +7,7 @@
 | Contenedor de prueba | WildFly 30.0.1.Final |
 | Construcción | Maven 3.9.9, Compiler 3.13.0, WAR 3.4.0 |
 | Pruebas | JUnit Jupiter 5.11.4, Mockito 5.15.2, Surefire 3.5.2 |
-| Persistencia | JPA, transacciones JTA, H2 ExampleDS demo / MySQL externo |
+| Persistencia | JPA, transacciones JTA, MySQL 8.1.0 probado con Connector/J 8.4.0; H2 ExampleDS para demo |
 | Presentación | JSP, Servlet, JavaScript, JAX-RS y JSON-B |
 | Seguridad | BASIC sobre ApplicationRealm; autorización EJB por USUARIO |
 

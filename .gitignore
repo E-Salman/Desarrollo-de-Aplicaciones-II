@@ -13,3 +13,22 @@
 *.war.isdeploying
 *.war.undeployed
 *.war.dodeploy
+
+# Configuración privada y archivos locales de ejecución
+.env
+.env.*
+!.env.example
+!.env.sample
+/work/
+/.local/
+/mysql-local/
+/mysql-data/
+/backups/
+/credentials.json
+/demo-access.json
+/acceso-local.json
+*.jceks
+*.p12
+
+# Dump recibido: conservar los scripts versionados de config/*.sql
+/instrumentos.sql

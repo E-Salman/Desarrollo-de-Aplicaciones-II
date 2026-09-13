@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="https://jakarta.ee/xml/ns/persistence/orm" version="3.0">
+    <!-- Compatibilidad con la demo H2 anterior; los enlaces a órdenes son del perfil MySQL. -->
+    <entity class="ar.edu.uade.inversorar.data.Portfolio" access="FIELD">
+        <attributes><transient name="usuarioId"/></attributes>
+    </entity>
+    <entity class="ar.edu.uade.inversorar.data.Operacion" access="FIELD">
+        <attributes><transient name="ordenDetalle"/></attributes>
+    </entity>
+</entity-mappings>

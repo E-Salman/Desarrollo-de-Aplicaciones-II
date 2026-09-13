@@ -1,7 +1,7 @@
 # Arquitectura por capas
 
 ```text
-REST Compra -> CompraService @Stateless -> Repository/DAO -> JPA/JTA
+REST Compra/Catálogo -> CompraService @Stateless -> Repository/DAO -> JPA/JTA
      | (resumen posterior)
      v
 PortfolioSesion CDI @SessionScoped -> PortfolioService @Stateful
@@ -24,3 +24,9 @@ PortfolioSesion es CDI @SessionScoped, serializable, y mantiene una referencia E
 @PostConstruct y @PreDestroy registran el identificador de conversación de Portfolio. DELETE /api/portfolio/simulacion sólo limpia el plan; DELETE /api/portfolio/sesion invalida la sesión HTTP y su callback llama a cerrar con @Remove. Lo mismo ocurre al expirar la sesión (30 minutos). @PermitAll en cerrar permite liberar recursos después de terminar la autenticación; los endpoints HTTP siguen exigiendo USUARIO.
 
 CompraServiceBean sigue siendo @Stateless, con callbacks propios. No mantiene conversaciones de clientes. Las futuras llamadas de Venta deben seguir resolviendo las posiciones reales desde persistencia, sin depender del capital simulado.
+
+## MySQL e integración del esquema
+
+CatalogoResource accede al catálogo a través de CompraService y CatalogoMercadoRepository. El perfil mysql mapea ticker a simbolo con orm-mysql.xml y consulta el último cierre en precios; no altera las columnas del catálogo recibido. Cada compra utiliza ordenes y orden_detalles, vinculados a un movimiento en operaciones. portfolios.usuario_id enlaza la cartera con usuarios. Los tres registros se confirman o revierten en la misma transacción; Portfolio sólo consolida operaciones.
+
+Los importes de Portfolio se agrupan por moneda. BigDecimal y diez decimales de persistencia en operaciones permiten representar precios pequeños de criptomonedas sin tratarlos como cero. Las categorías sin registros siguen visibles en el formulario, vacías; no se agregan instrumentos ficticios a MySQL.
