@@ -31,6 +31,8 @@ public class CompraResource {
     }
     @POST @Path("ventas") @Consumes(MediaType.APPLICATION_JSON)
     public Response vender(VentaRequest request) {
+        httpRequest.getSession(true);
+        var portfolioService = portfolioSesion.servicio(httpRequest.getUserPrincipal().getName());
         try { ventaService.registrarVenta(request); return Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build(); }
         catch (ReglaNegocioException e) { return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorDto(e.getMessage())).build(); }
     }

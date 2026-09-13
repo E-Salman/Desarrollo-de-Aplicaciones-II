@@ -11,6 +11,7 @@
 - RF-07: mostrar capital invertido, patrimonio, ganancia (realizada + no realizada) y posiciones actualizadas.
 - RF-08: acumular la ganancia realizada de las ventas y reflejarla en la ganancia total del portfolio, aun cuando una posición se venda por completo.
 - RF-09: exponer compra, venta y resumen mediante API REST protegida por rol.
+- RF-10: permitir planificar una distribución de capital por tipo de instrumento durante la sesión, sin persistirla ni mezclarla con las inversiones reales.
 
 ## Validaciones
 
@@ -24,36 +25,22 @@
 
 | Requisito | Estado y evidencia |
 |---|---|
-| Compra funcional en capas | REST/dashboard, interfaz EJB stateless, validaciones y repositories |
-| Portfolio funcional en capas | REST/dashboard, interfaz EJB stateful, DTOs, repositories y planificación temporal |
-| Tres componentes de entrega | Compra, Venta y Portfolio; falta integrar y demostrar Venta |
-| Al menos un stateless | CompraServiceBean |
-| Al menos un stateful | PortfolioServiceBean por sesión HTTP |
-| Inicialización y destrucción | Compra y Portfolio con PostConstruct/PreDestroy; Remove al cerrar Portfolio |
-| Tres patrones diferentes | Repository/DAO, Service Facade y Strategy; justificados en TECNICO.md |
-| Autenticación y rol | BASIC del contenedor y RolesAllowed USUARIO; login definitivo pendiente |
-| Transacciones | Compra y consultas de Portfolio REQUIRED; planificación NOT_SUPPORTED |
-| MySQL | Perfil preparado; esquema y conexión del equipo pendientes |
-| Documento de 5 a 8 páginas | El Word del equipo debe actualizarse a esta organización. El PDF anterior queda histórico |
-| Demo y defensa | PRUEBAS.md, EVIDENCIA.md y explicación de decisiones en TECNICO.md |
-
-La simulación es una funcionalidad de Portfolio, no otro componente. No se incluyen historial/riesgo, precios en vivo, pagos reales ni conversión multimoneda. Ganancia actual significa ganancia no realizada; integrar Venta exige acordar costo remanente y ganancia realizada.
-| Compra funcional en capas | Implementada: REST/dashboard, interfaz EJB, validaciones y repositories |
-| Venta funcional en capas | Implementada: `VentaService`/`VentaServiceBean`, valida cantidad poseída, consolidada en `PortfolioService` a costo promedio ponderado |
-| Portfolio funcional en capas | Implementado: interfaz + stateless (Service Facade), DTOs, REST y dashboard |
-| Tres componentes de entrega | Compra, Venta y Portfolio integrados a nivel de código y `mvn test`; falta una corrida de demo/smoke conjunta con Venta desplegada (ver [PRUEBAS.md](PRUEBAS.md)) |
-| Al menos un stateless | `CompraServiceBean`, `VentaServiceBean` y `PortfolioServiceBean` |
-| Al menos un stateful | `SimuladorPortfolioServiceBean` por sesión HTTP |
-| Inicialización/destrucción | Compra, Venta y Simulador con `@PostConstruct`/`@PreDestroy` y logging; `@Remove` para cerrar la simulación |
-| Patrones de diseño | Repository/DAO, Service Facade, Strategy; ver [ARQUITECTURA.md](ARQUITECTURA.md) |
-| Autenticación y rol | `web.xml` BASIC + rol `USUARIO` y `@RolesAllowed` en los EJB; login definitivo del equipo pendiente |
-| Transacciones | Compra y Venta con `TransactionAttribute.REQUIRED`, JTA y `ReglaNegocioException` con `rollback=true` |
+| Compra funcional en capas | Implementada: REST/dashboard, interfaz EJB stateless, validaciones y repositories |
+| Venta funcional en capas | Implementada: `VentaService`/`VentaServiceBean` (stateless), valida cantidad poseída, consolidada en `PortfolioService` |
+| Portfolio funcional en capas | Implementado: interfaz + EJB stateful por sesión (Service Facade), DTOs, REST y dashboard |
+| Tres componentes de entrega | Compra, Venta y Portfolio integrados a nivel de código; `mvn test` cubre Compra y Portfolio (con su simulación). Venta todavía no tiene test unitario propio ni una corrida de demo/smoke conjunta desplegada — ver [PRUEBAS.md](PRUEBAS.md) |
+| Al menos un stateless | `CompraServiceBean` y `VentaServiceBean` |
+| Al menos un stateful | `PortfolioServiceBean`, una instancia por sesión HTTP vía `PortfolioSesion` |
+| Inicialización/destrucción | Compra y Venta con `@PostConstruct`/`@PreDestroy` y logging; Portfolio con `@PostConstruct`/`@PreDestroy` (identificador de conversación) y cierre explícito por `@Remove` |
+| Patrones de diseño | Repository/DAO, Service Facade (`PortfolioService`), Strategy (`CotizacionStrategy`); ver [ARQUITECTURA.md](ARQUITECTURA.md) |
+| Autenticación y rol | `web.xml` BASIC + rol `USUARIO` y `@RolesAllowed` en los EJB; `PortfolioSesion` además valida que la sesión no cambie de identidad; login definitivo del equipo pendiente |
+| Transacciones | Compra y Venta con `TransactionAttribute.REQUIRED`; Portfolio usa `REQUIRED` en sus consultas y `NOT_SUPPORTED` en la planificación; `ReglaNegocioException` con `rollback=true` |
 | MySQL | Perfil/configuración preparados (`mvn -Pmysql package`); despliegue en el esquema definitivo del equipo pendiente |
-| Documento de 5-8 páginas | `TECNICO.pdf`/`TECNICO.md` (redactado antes de integrar Venta; repasar antes de entregar) |
-| Demo y defensa | [PRUEBAS.md](PRUEBAS.md) y [TECNICO.md](TECNICO.md) cubren Compra/Portfolio/Simulador; falta sumar el caso de Venta a esa evidencia |
+| Documento de 5-8 páginas | `TECNICO.md` actualizado a esta organización; `TECNICO.pdf` corresponde a una versión anterior al refactor de Portfolio a stateful y no se considera vigente |
+| Demo y defensa | [PRUEBAS.md](PRUEBAS.md) y [TECNICO.md](TECNICO.md) cubren Compra, Portfolio y su simulación; falta sumar el caso de Venta a esa evidencia |
 
-No se incluyen historial/riesgo del simulador, datos históricos, pagos reales ni conversión multimoneda. El catálogo es ilustrativo.
+No se incluyen historial/riesgo de la simulación, datos históricos, pagos reales ni conversión multimoneda. El catálogo es ilustrativo.
 
 ## Fuera de alcance
 
-Autenticación definitiva del equipo, cotizaciones en tiempo real, historial completo, simulador como reemplazo de Venta, y detalle por ticker quedan para instancias posteriores.
+Autenticación definitiva del equipo, cotizaciones en tiempo real, historial completo y detalle por ticker quedan para instancias posteriores.
