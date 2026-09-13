@@ -1,6 +1,6 @@
 # Funcionamiento de la venta de instrumentos
 
-Documenta cómo se registra una venta y cómo impacta en el resumen del portfolio. Complementa [ARQUITECTURA.md](ARQUITECTURA.md) (capas y patrón Strategy) y [REQUISITOS.md](REQUISITOS.md) (RF-08/RF-09).
+Documenta cómo se registra una venta y cómo impacta en el resumen del portfolio. Complementa [ARQUITECTURA.md](ARQUITECTURA.md) (capas y patrones) y [REQUISITOS.md](REQUISITOS.md) (RF-04/RF-08).
 
 ## Flujo end-to-end
 
@@ -8,21 +8,22 @@ Documenta cómo se registra una venta y cómo impacta en el resumen del portfoli
 dashboard.jsp/js (modal "Vender")
         │  POST /api/ventas { ticker, cantidad, precioUnitario, fecha }
         ▼
-OperacionResource.vender()
+CompraResource.vender()
         │
         ▼
-OperacionServiceBean.registrarVenta()
-        │  arma historial del ticker (OperacionRepository.porPortfolioYTicker)
-        ▼
-VentaStrategy.validar() + .crear()
-        │
+VentaServiceBean.registrarVenta()
+        │  resuelve la cartera (PortfolioActual) y arma historial del ticker (OperacionRepository.porPortfolioYTicker)
+        │  valida cantidad/precio/fecha y que no supere lo poseído
         ▼
 OperacionRepository.guardar(Operacion tipo=VENTA)
+        │
+        ▼
+PortfolioServiceBean.obtenerResumen() (recalcula todo, incluida la ganancia realizada)
 ```
 
 La respuesta, tanto en éxito (201) como en error de negocio (400), es el mismo `ResumenPortfolioDto` / `ErrorDto` que usa el flujo de compra — el front simplemente re-renderiza el resumen o muestra el mensaje de error en el modal.
 
-## Validaciones (`VentaStrategy`)
+## Validaciones (`VentaServiceBean`)
 
 | Regla | Mensaje si falla |
 |---|---|
@@ -35,7 +36,7 @@ No se permiten ventas en corto: si no hay posición o la cantidad pedida excede 
 
 ## Costo promedio ponderado y ganancia realizada
 
-`OperacionServiceBean.obtenerResumen()` recorre las operaciones de cada ticker en orden cronológico (fecha, luego id) y mantiene dos acumuladores por posición: `cantidad` e `invertido`.
+`PortfolioServiceBean.consolidar()` recorre las operaciones de cada ticker en orden cronológico (fecha, luego id) y mantiene dos acumuladores por posición: `cantidad` e `invertido`.
 
 - **Compra**: `cantidad += cantidadComprada`, `invertido += total` (cantidad × precio de esa compra).
 - **Venta**: se calcula el precio promedio vigente (`invertido / cantidad` en ese momento), y con eso:
