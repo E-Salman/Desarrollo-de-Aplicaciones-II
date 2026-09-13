@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="https://jakarta.ee/xml/ns/persistence/orm" version="3.0">
+    <entity class="ar.edu.uade.inversorar.data.Instrumento" access="FIELD">
+        <table name="instrumentos"/>
+        <attributes>
+            <basic name="ticker"><column name="simbolo" nullable="false" updatable="false"/></basic>
+            <transient name="cotizacionActual"/>
+        </attributes>
+    </entity>
+</entity-mappings>

@@ -1,0 +1,26 @@
+# Componentes, arquitectura y decisiones de diseño
+
+La aplicación permite registrar inversiones y consultar su evolución según los precios históricos cargados. Los componentes de negocio acordados son **Compra, Portfolio y Venta**. En `mysql_componente` están integrados Compra y Portfolio; Venta está desarrollada en la rama de Joaco y falta integrarla.
+
+**Stateful, Stateless y Strategy son conceptos distintos.** Stateless y Stateful indican cómo administra el contenedor un EJB: sin estado conversacional del cliente o conservándolo entre llamadas. Strategy es un patrón que permite intercambiar una lógica detrás de una interfaz. Un componente puede ser Stateless y utilizar Strategy al mismo tiempo.
+
+**Compra — `CompraServiceBean`, `@Stateless`.** Lista instrumentos, consulta sus precios históricos y registra compras. Valida instrumento, cantidad, precio, fecha y datos de cotización. Utiliza `InstrumentoRepository`, `CatalogoMercadoRepository`, `OrdenRepository`, `OperacionRepository` y el servicio `PortfolioActual` para trabajar sobre la cartera del usuario autenticado. Se eligió Stateless porque cada compra se resuelve con los datos de la petición y la base; no necesita recordar un proceso entre llamadas. Cada compra queda en `ordenes`, `orden_detalles` y un movimiento enlazado en `operaciones`, dentro de la misma transacción. Portfolio suma sólo movimientos para evitar contar dos veces una compra.
+
+**Portfolio — `PortfolioServiceBean`, `@Stateful`.** Calcula posiciones, capital invertido, patrimonio, precio promedio, ganancia/pérdida y rendimiento. También permite planificar un capital y distribuir porcentajes por tipo de instrumento: esa simulación pertenece a Portfolio. Se eligió Stateful porque el plan se construye en varias llamadas y conserva temporalmente capital y porcentajes. `PortfolioSesion`, de la capa web, mantiene una referencia al EJB por sesión HTTP. Las inversiones se consultan nuevamente en MySQL; no dependen de que siga viva la sesión. Los totales se separan por moneda para no sumar BTC y USDT como si fueran equivalentes.
+
+**Venta — rama `joaco`, revisión local `88f85f5`.** En esa versión, `OperacionServiceBean` es `@Stateless` y utiliza `OperacionStrategy`, implementada por `CompraStrategy` y `VentaStrategy`. Esta última valida las cantidades disponibles y crea una operación VENTA. Strategy separa las reglas de compra y venta del flujo común de registro. `VentaStrategy` es un bean CDI `@Dependent`, no un EJB Stateless. Falta integrar sus reglas con nuestra identidad de usuario, el Portfolio y el esquema MySQL; todavía no se presenta como componente desplegado en esta rama.
+
+**Patrones aplicados.** Repository/DAO encapsula el acceso a datos: las clases `*Repository`, en el paquete `data`, concentran consultas y persistencia. Así los servicios reutilizan ese acceso y la pantalla no contiene SQL. Se cuenta como un patrón. Service Facade ofrece una entrada simplificada a varias tareas internas: `PortfolioService` y su implementación coordinan identidad, operaciones, cotización, cálculos y planificación, devolviendo DTOs. Strategy separa una operación variable de quien la utiliza: `CotizacionStrategy` define `cotizar` y `CotizacionCatalogo` obtiene el precio. Portfolio depende del contrato, por lo que se puede cambiar la fuente de cotización sin reescribir su consolidación. Hay una implementación productiva activa, CDI `@ApplicationScoped`; la sustitución también se comprueba en una prueba unitaria.
+
+**Arquitectura y motivos.** La presentación está en JSP, JavaScript y recursos REST; el negocio en interfaces y servicios EJB; los datos en entidades y repositorios JPA. Separar estas capas permite cambiar pantallas, cálculos o persistencia con menos modificaciones cruzadas. MySQL se conecta mediante un datasource administrado por WildFly, con credenciales fuera del código. `@TransactionAttribute(REQUIRED)` deja la transacción de compra a cargo del contenedor; `OrdenRepository` exige MANDATORY. Se comprobó que un fallo al guardar el movimiento revierte también la orden y el detalle. `@RolesAllowed("USUARIO")` protege las operaciones, y la cartera se resuelve desde la identidad autenticada. El login definitivo del equipo sigue pendiente.
+
+**Evidencia del ciclo de vida.** Compra y Portfolio tienen `@PostConstruct` y `@PreDestroy`; el código de producción recibe sus EJB por inyección. En los registros reales de WildFly del 13/09/2026 aparecen:
+
+```text
+19:23:29,101 CompraServiceBean inicializado
+19:30:49,942 CompraServiceBean destruido
+19:24:45,828 Portfolio inicializado 1c5720c1-12e0-48dc-8251-00f28104ec6a
+19:24:46,180 Portfolio destruido 1c5720c1-12e0-48dc-8251-00f28104ec6a
+```
+
+El mismo identificador permite seguir una instancia de Portfolio. Al cerrar la sesión HTTP, el callback de `PortfolioSesion` llama a `cerrar()`, anotado con `@Remove`; el contenedor ejecuta la destrucción del EJB. En Compra se observó la destrucción al redesplegar: no se crea y destruye necesariamente un bean por compra. Estos registros provienen del servidor, no de construir clases manualmente en un test. La evidencia corresponde al ciclo de vida de los EJB, no al patrón Strategy. Ver el extracto completo y sus límites en [EVIDENCIA.md](EVIDENCIA.md).

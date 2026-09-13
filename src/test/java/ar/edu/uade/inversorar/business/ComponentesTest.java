@@ -26,6 +26,34 @@ class ComponentesTest {
         igual("2850", r.capitalInvertido); igual("2925", r.patrimonioTotal); igual("75", r.gananciaTotal);
         var p = r.posiciones.get(0); igual("190", p.precioPromedio); igual("15", p.cantidad); igual("2.6316", p.rendimientoPorcentaje);
     }
+    @Test void noSumaMonedasDistintas() throws Exception {
+        var eth = new Instrumento("ETH/BTC", "ETHBTC", TipoInstrumento.CRIPTO, n("0.03"));
+        eth.actualizarCotizacion(n("0.03"), "BTC", "2026-08-31 00:00:00");
+        var movimiento = new Operacion(cartera, eth, n("2"), n("0.02"), LocalDate.now());
+        var r = portfolio().consolidar(List.of(compra("1", "180"), movimiento));
+        assertNull(r.capitalInvertido); assertNull(r.patrimonioTotal); assertNull(r.moneda);
+        igual("180", r.totalesPorMoneda.get("USD").capitalInvertido);
+        igual("0.04", r.totalesPorMoneda.get("BTC").capitalInvertido);
+        igual("0.02", r.totalesPorMoneda.get("BTC").gananciaTotal);
+    }
+    @Test void conservaPrecisionDePreciosCripto() throws Exception {
+        var eth = new Instrumento("ETH/BTC", "ETHBTC", TipoInstrumento.CRIPTO, n("0.0000001234"));
+        eth.actualizarCotizacion(n("0.0000001234"), "BTC", "2026-08-31 00:00:00");
+        var r = portfolio().consolidar(List.of(new Operacion(cartera, eth, n("2"), n("0.0000001001"), LocalDate.now())));
+        igual("0.0000002002", r.capitalInvertido); igual("0.0000002468", r.patrimonioTotal);
+        igual("0.0000001001", r.posiciones.get(0).precioPromedio); assertEquals("BTC", r.moneda);
+    }
+    @Test void compraSinMonedaNoPersiste() throws Exception {
+        var repo = mock(OperacionRepository.class); var bean = compraBean(repo);
+        apple.actualizarCotizacion(n("195"), null, null);
+        assertThrows(ReglaNegocioException.class, () -> bean.registrarCompra(request()));
+        verifyNoInteractions(repo);
+    }
+    @Test void compraTotalDemasiadoPequenioNoPersiste() throws Exception {
+        var repo = mock(OperacionRepository.class); var bean = compraBean(repo); var r = request();
+        r.cantidad=n("0.0000000001"); r.precioUnitario=n("0.0000000001");
+        assertThrows(ReglaNegocioException.class, () -> bean.registrarCompra(r)); verifyNoInteractions(repo);
+    }
     @Test void vacioYPerdida() throws Exception {
         var r = portfolio().consolidar(List.of()); assertTrue(r.posiciones.isEmpty()); igual("0", r.rendimientoPorcentaje);
         igual("-5", portfolio().consolidar(List.of(compra("1", "200"))).gananciaTotal);
@@ -51,13 +79,43 @@ class ComponentesTest {
         var captor=org.mockito.ArgumentCaptor.forClass(Operacion.class); verify(repo).guardar(captor.capture());
         igual("360",captor.getValue().getTotal()); assertSame(cartera,captor.getValue().getPortfolio());
     }
+    @Test void compraMysqlVinculaOrdenYMovimiento() throws Exception {
+        var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var bean=compraBean(repo);
+        var config=mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
+        inyectar(bean,"configuracion",config); inyectar(bean,"ordenes",ordenes); inyectar(cartera,"usuarioId",42L);
+        when(ordenes.guardarCompra(any())).thenAnswer(invocacion -> {
+            Operacion o=invocacion.getArgument(0);
+            return new OrdenDetalle(new Orden(o.getPortfolio().getUsuarioId(),"USD",o.getTotal()),o);
+        });
+        bean.registrarCompra(request());
+        var captor=org.mockito.ArgumentCaptor.forClass(Operacion.class); verify(repo).guardar(captor.capture());
+        var o=captor.getValue(); assertNotNull(o.getOrdenDetalle());
+        assertEquals(42L,o.getOrdenDetalle().getOrden().getUsuarioId());
+        igual("360",o.getOrdenDetalle().getSubtotal()); igual("360",o.getOrdenDetalle().getOrden().getTotal());
+        igual("2",o.getOrdenDetalle().getCantidad()); igual("180",o.getOrdenDetalle().getPrecioUnitario());
+        var orden=org.mockito.Mockito.inOrder(ordenes,repo); orden.verify(ordenes).guardarCompra(o); orden.verify(repo).guardar(o);
+    }
+    @Test void cuentaSinUsuarioNoGeneraOrdenNiMovimiento() throws Exception {
+        var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var bean=compraBean(repo);
+        var config=mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
+        inyectar(bean,"configuracion",config); inyectar(bean,"ordenes",ordenes);
+        assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(request())); verifyNoInteractions(ordenes,repo);
+    }
+    @Test void portfolioNoSumaDetalleOtraVez() throws Exception {
+        var o=compra("2","180"); o.vincularOrden(new OrdenDetalle(new Orden(42L,"USD",o.getTotal()),o));
+        var r=portfolio().consolidar(List.of(o)); igual("360",r.capitalInvertido); igual("2",r.posiciones.get(0).cantidad);
+    }
+    @Test void cambioDeMonedaDeCatalogoNoReinterpretaLaOrden() throws Exception {
+        var o=compra("2","180"); o.vincularOrden(new OrdenDetalle(new Orden(42L,"BTC",o.getTotal()),o));
+        var bean=portfolio(); assertThrows(ReglaNegocioException.class,()->bean.consolidar(List.of(o)));
+    }
     @Test void compraRechazaEntradasInvalidasSinPersistir() throws Exception {
         var repo=mock(OperacionRepository.class); var bean=compraBean(repo);
         assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(null));
         var cero=request(); cero.cantidad=BigDecimal.ZERO; assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(cero));
         var futuro=request(); futuro.fecha=LocalDate.now().plusDays(1); assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(futuro));
         var desconocido=request(); desconocido.ticker="NOEXISTE"; assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(desconocido));
-        var precision=request(); precision.cantidad=n("0.0000001"); assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(precision));
+        var precision=request(); precision.cantidad=n("0.00000000001"); assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(precision));
         var enorme=request(); enorme.precioUnitario=n("999999999999999"); assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(enorme));
         verifyNoInteractions(repo);
     }

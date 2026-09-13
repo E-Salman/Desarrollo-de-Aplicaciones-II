@@ -1,3 +1,50 @@
+# Evidencia adicional: órdenes integradas
+
+Verificación final previa al PR, 13/09/2026: `mvn -Pmysql test package`, 21 pruebas, cero fallos/errores y BUILD SUCCESS. Registro local: `work/mysql-pr-build.log`.
+
+13/09/2026, mysql_componente. `work/ordenes-build.log`: 21 pruebas unitarias, sin errores, BUILD SUCCESS. `work/ordenes-qa-results.txt`: 20 verificaciones HTTP/SQL correctas, incluida una falla controlada al guardar el movimiento que revirtió también orden y detalle. El trigger y los registros QA se retiraron al terminar; no se alteraron compras del usuario en esas pruebas.
+
+Las compras previas del usuario se vincularon a sus órdenes mediante una migración transaccional: dos compras migradas, cero pendientes al repetirla, sin cambios en cantidad, precio, importe ni resumen. El SQL completo del esquema se probó en una base temporal vacía, generando 11 tablas y 13 claves foráneas. Esa base temporal se retiró.
+
+Los apartados siguientes conservan la evidencia de etapas previas y del ciclo de vida EJB; sus conteos de pruebas corresponden a esas ejecuciones.
+
+# Evidencia anterior a la integración de órdenes: mysql_componente
+
+13 de septiembre de 2026. Se revisaron el código y los registros locales de WildFly; no se provocó un redespliegue nuevo para generar esta documentación.
+
+## Construcción e integración
+
+- Construcción de esa etapa: `mvn -Pmysql package`, 17 pruebas JUnit/Mockito, cero fallos/errores y BUILD SUCCESS. También se ejecutó `mvn -Pmysql clean test package`.
+- MySQL 8.1.0 y Connector/J 8.4.0: 38 verificaciones HTTP/SQL en una instancia aislada de WildFly 30.0.1.Final. Catálogo completo de 1.365 instrumentos, 1.267.911 precios, autenticación/roles, compras, precisión, monedas, aislamiento y conservación de operaciones al cerrar sesión.
+- Comprobación adicional: tras redesplegar expresamente el WAR MySQL, la cartera QA conservó sus dos posiciones y 213 USDT de costo en esa moneda.
+- Navegador: formulario compacto de compra, categorías sin datos visibles y vacías, selección de criptomonedas, catálogo opcional e históricos. En esa última comprobación de interfaz no se crearon compras.
+- Las cuatro compras de las identidades QA se retiraron al terminar. No son las compras posteriores del usuario de la app. El servidor de pruebas se apagó y la aplicación local continúa en 18080 con MySQL.
+
+Fuentes locales de esta tarea, fuera del repositorio: `work/compra-estetica-package.log`, `work/mysql-component-final.log`, `work/mysql-qa-results.txt` y `work/mysql-qa/log/server.log`. Los logs completos se excluyen de Git; este extracto conserva únicamente mensajes técnicos sin credenciales.
+
+## Callbacks realmente observados
+
+Extracto literal de `work/mysql-qa/log/server.log`:
+
+```text
+2026-09-13 19:23:29,101 INFO  [ar.edu.uade.inversorar.business.CompraServiceBean] (default task-1) CompraServiceBean inicializado
+2026-09-13 19:30:49,942 INFO  [ar.edu.uade.inversorar.business.CompraServiceBean] (ServerService Thread Pool -- 102) CompraServiceBean destruido
+2026-09-13 19:24:45,828 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio inicializado 1c5720c1-12e0-48dc-8251-00f28104ec6a
+2026-09-13 19:24:46,180 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio destruido 1c5720c1-12e0-48dc-8251-00f28104ec6a
+```
+
+`CompraServiceBean.iniciar()` tiene `@PostConstruct` y `destruir()` tiene `@PreDestroy`. El contenedor inicializó instancias y ejecutó su destrucción al redesplegar. Los mensajes de Compra no incluyen identificador por instancia: prueban que se ejecutaron los callbacks, pero no permiten correlacionar individualmente todas las instancias del pool.
+
+`PortfolioServiceBean.iniciar()` y `destruir()` tienen los mismos callbacks y registran un UUID por instancia. El UUID `1c5720c1-12e0-48dc-8251-00f28104ec6a` aparece tanto al iniciar como al destruir. La prueba HTTP cerró la conversación mediante `DELETE /api/portfolio/sesion`: se invalidó la sesión web, `PortfolioSesion.@PreDestroy` llamó al método `cerrar()` marcado `@Remove`, y el contenedor retiró el EJB. Las compras siguieron disponibles desde una nueva sesión.
+
+La evidencia es de EJB Stateless/Stateful administrados por WildFly. Strategy no define un ciclo de vida. `CotizacionCatalogo` es CDI `@ApplicationScoped`; no tiene estos callbacks y no se presenta como evidencia del requisito EJB. En `joaco` se observaron callbacks de `OperacionServiceBean` escritos con nivel FINE, pero no se ejecutó Venta en esta rama ni se atribuyen registros de ejecución a ese componente.
+
+Para repetir la demostración, usar una sesión de prueba, consultar Portfolio, definir un capital y porcentaje mediante `/api/portfolio/simulacion`, consultar nuevamente y cerrar con `DELETE /api/portfolio/sesion`. Correlacionar el UUID en `server.log`. Para ver `PreDestroy` de Compra, retirar o redesplegar el WAR únicamente en un servidor de prueba. Las pruebas con `new Bean()` no demuestran el ciclo de vida del contenedor. No se comprobó una secuencia de pasivación/activación ni se promete persistencia de la planificación temporal tras reiniciar el servidor.
+
+## Evidencia histórica de etapas anteriores (H2)
+
+Los apartados siguientes se conservan como antecedentes: sus conteos y referencias a MySQL pendiente describen esas ejecuciones anteriores, no el estado actual.
+
 # Evidencia de Portfolio stateful
 
 13 de septiembre de 2026. Rama integracion_entrega.
