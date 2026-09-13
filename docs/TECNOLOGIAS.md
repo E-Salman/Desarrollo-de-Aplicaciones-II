@@ -13,4 +13,4 @@
 
 Las APIs Jakarta son provistas por el servidor; JUnit y Mockito solo se usan en test. No se agregan frameworks de frontend ni servicios externos. Maven debe acceder por HTTPS a Central con una cadena de confianza válida; no desactivar la verificación TLS.
 
-Referencias primarias: [WildFly Getting Started](https://docs.wildfly.org/30/Getting_Started_Guide.html), [Elytron](https://docs.wildfly.org/30/WildFly_Elytron_Security.html). La configuración final de datasource y autenticación depende del servidor del equipo.
+Referencias primarias: [WildFly Getting Started](https://docs.wildfly.org/30/Getting_Started_Guide.html), [Elytron](https://docs.wildfly.org/30/WildFly_Elytron_Security.html). La configuración final de datasource y autenticación depende del servidor del equipo. Registro/Login es el cuarto componente del proyecto, a cargo de Zoe; sus clases, tipo de EJB y patrones se documentarán al integrar su implementación. La autenticación BASIC actual es infraestructura provisional.

@@ -51,7 +51,7 @@ Las evidencias sanitizadas de esta ejecución están en `EVIDENCIA.md`. Se verif
 
 ## Pendiente fuera de esta rama
 
-Integrar login definitivo y Venta; mantener los enlaces con usuarios, órdenes y movimientos al incorporar esas funciones. Completar casos de venta parcial/total, concurrencia de stock, costo remanente y ganancias realizadas después de integrar esos componentes. La entrega general de tres componentes no se declara completa aquí.
+Integrar Registro/Login (Zoe) y Venta (Joaco); mantener los enlaces con usuarios, órdenes y movimientos al incorporar esas funciones. Completar casos de venta parcial/total, concurrencia de stock, costo remanente y ganancias realizadas después de integrar esos componentes. El proyecto define cuatro componentes: Compra, Venta, Portfolio y Registro/Login. La consigna pide al menos tres desplegados; la integración de los cuatro no se declara completa aquí. Para Registro/Login, verificar alta válida, usuario duplicado, credenciales inválidas, rol, vínculo con portfolio y cierre/cambio de sesión sin reutilizar otra identidad.
 
 ## Registro de órdenes
 

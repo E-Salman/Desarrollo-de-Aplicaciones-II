@@ -1,6 +1,6 @@
 # Catálogo y compras en MySQL
 
-Trabajo de la rama `mysql_componente`, creada desde `integracion_entrega` (`09c9b09`). No incorpora Venta ni el login desarrollado en otras ramas.
+Trabajo de la rama `mysql_componente`, creada desde `integracion_entrega` (`09c9b09`). De los cuatro componentes acordados (Compra, Venta, Portfolio y Registro/Login), integra Compra y Portfolio. No incorpora todavía Venta de Joaco ni Registro/Login de Zoe.
 
 ## Datos y alcance
 
@@ -74,7 +74,7 @@ Las compras ficticias de la demo H2 no se migran automáticamente al nuevo catá
 - Verificación adicional de persistencia después de redesplegar el WAR. Perfil H2 comprobado por separado con sus 25 instrumentos de demostración.
 - Verificación directa en MySQL de las operaciones y de los conteos originales. Los registros de prueba pertenecen a identidades aisladas y se retiran al finalizar las pruebas locales.
 
-Falta integrar y probar Venta y el login del equipo en esta configuración. Esta rama no declara completa la entrega general.
+Falta integrar y probar Venta (Joaco) y el componente Registro/Login (Zoe) en esta configuración. Esta rama no declara completa la entrega general.
 
 ## Órdenes y migración de compras anteriores
 

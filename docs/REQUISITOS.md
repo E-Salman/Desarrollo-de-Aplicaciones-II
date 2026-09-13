@@ -4,12 +4,13 @@
 |---|---|
 | Compra funcional en capas | REST/dashboard, interfaz EJB stateless, validaciones y repositories |
 | Portfolio funcional en capas | REST/dashboard, interfaz EJB stateful, DTOs, repositories y planificación temporal |
-| Tres componentes de entrega | Compra, Venta y Portfolio; falta integrar y demostrar Venta |
+| Al menos tres componentes en capas (mínimo de la consigna) | El proyecto define cuatro: Compra, Venta, Portfolio y Registro/Login; falta integrar y demostrar Venta y Registro/Login |
+| Registro/Login como cuarto componente | Zoe: alta, autenticación y cierre de sesión; capas, tipo de EJB y patrones pendientes de verificar |
 | Al menos un stateless | CompraServiceBean |
 | Al menos un stateful | PortfolioServiceBean por sesión HTTP |
 | Inicialización y destrucción | Compra y Portfolio con PostConstruct/PreDestroy; Remove al cerrar Portfolio |
 | Tres patrones diferentes | Repository/DAO, Service Facade y Strategy; justificados en TECNICO.md |
-| Autenticación y rol | BASIC del contenedor y RolesAllowed USUARIO; login definitivo pendiente |
+| Autenticación y rol | BASIC del contenedor y RolesAllowed USUARIO; componente Registro/Login de Zoe pendiente |
 | Transacciones | Compra y consultas de Portfolio REQUIRED; planificación NOT_SUPPORTED |
 | MySQL | Datasource probado, catálogo e históricos del equipo disponibles y compras persistidas; órdenes y detalles enlazados a movimientos; relación de usuario explícita |
 | Documento de 5 a 8 páginas | El Word del equipo debe actualizarse a esta organización. El PDF anterior queda histórico |

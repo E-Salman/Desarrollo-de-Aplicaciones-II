@@ -2,7 +2,9 @@
 
 Se inspeccionaron las ramas publicadas: `primeros_pasos` y `joaco` apuntaban a `ac4a73f`. El usuario indicó que Login y BD están siendo desarrollados por compañeros y podrían no estar publicados. El refactor previo se realizó sobre integracion_entrega, que ya contiene Compra y Portfolio. No se incorporó ninguna rama adicional ni se diseñaron pantallas de login, tablas de usuarios, importadores de Binance o Venta.
 
-## Login
+## Registro/Login — Zoe
+
+El proyecto acuerda cuatro componentes: Compra, Venta, Portfolio y Registro/Login. Registro y Login se cuentan juntos como un componente. Su implementación debe cubrir alta, autenticación y cierre de sesión en capas; falta integrarla y verificar con Zoe el tipo de EJB y los patrones realmente usados.
 
 `PortfolioActual` es la frontera de identidad. La implementación de demostración toma `SessionContext.getCallerPrincipal()` y verifica el rol `USUARIO`. El principal debe ser una identidad estable, no un nombre editable. Un portfolio se aprovisiona en el primer acceso y se reutiliza por propietario. No existe fallback anónimo ni portfolio fijo.
 
@@ -16,9 +18,9 @@ PortfolioService ahora es stateful. En presentación, inyectar PortfolioSesion y
 
 DELETE /api/portfolio/simulacion reinicia el plan sin cerrar el login. DELETE /api/portfolio/sesion invalida la sesión HTTP completa y libera el EJB con @Remove. El login del equipo debe invalidar la sesión al salir o cambiar de cuenta para impedir reutilizar una conversación de otra identidad. Todo acceso sigue requiriendo USUARIO. /api/simulador permanece como alias de compatibilidad, no como componente separado.
 
-## Venta
+## Venta — Joaco
 
-Durante la revisión final se publicó `joaco` en `88f85f5`. Esa rama agrupa Compra y Venta en `OperacionServiceBean @Stateless`, con CompraStrategy y VentaStrategy; también calcula el resumen y todavía usa el portfolio demo 1. No se incorporó a integracion_entrega. Para mantener los tres componentes acordados, revisar esa separación al integrar: conservar Compra, dejar la consolidación y planificación en Portfolio y ubicar la venta en su componente, reutilizando las reglas del compañero. No reemplazar este Portfolio stateful ni su resolución por identidad con el resumen antiguo.
+Durante la revisión final se publicó `joaco` en `88f85f5`. Esa rama agrupa Compra y Venta en `OperacionServiceBean @Stateless`, con CompraStrategy y VentaStrategy; también calcula el resumen y todavía usa el portfolio demo 1. No se incorporó a integracion_entrega. Para mantener la separación de los cuatro componentes acordados, revisar esa separación al integrar: conservar Compra, dejar la consolidación y planificación en Portfolio y ubicar la venta en su componente, reutilizando las reglas del compañero. No reemplazar este Portfolio stateful ni su resolución por identidad con el resumen antiguo.
 
 Reutilizar PortfolioActual, InstrumentoRepository y OperacionRepository. Acordar tipo VENTA, stock disponible y política de costo promedio móvil; ordenar cronológicamente por fecha e ID para reducir costo al vender. La venta debe impedir saldo negativo dentro de una transacción y resolver la concurrencia con bloqueo/versionado. El resumen actual rechaza tipos no soportados; no suma una venta como si fuera compra. Definir ganancia realizada separada de la ganancia no realizada actual. No se introdujeron métodos de venta ni nuevas reglas contables sin el componente del compañero.
 

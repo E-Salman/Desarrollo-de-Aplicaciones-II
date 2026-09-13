@@ -1,14 +1,17 @@
-# Decisiones técnicas de Compra y Portfolio
+# Decisiones técnicas de Compra, Venta, Portfolio y Registro/Login
 
 Estado de mysql_componente al 13 de septiembre de 2026. Este texto actualiza la arquitectura; el PDF anterior conservado en el repositorio es histórico. El Word del equipo debe reflejar estos cambios antes de la entrega.
 
-## Componentes de negocio
+## Componentes del proyecto
+
+Se definen cuatro componentes: **Compra, Venta, Portfolio y Registro/Login**. Registro y Login forman un único componente a cargo de Zoe. La consigna exige al menos tres componentes completamente implementados y desplegados; ese mínimo no limita el proyecto a tres. En esta rama están integrados Compra y Portfolio. Venta (Joaco) y Registro/Login (Zoe) siguen pendientes de integración.
 
 | Componente | EJB | Responsabilidad | Patrones aplicados |
 |---|---|---|---|
 | Compra | Stateless | Listar instrumentos y validar/registrar compras | Repository/DAO |
 | Portfolio | Stateful | Consultar posiciones y rendimientos, mantener un plan temporal de distribución | Service Facade, Repository/DAO y Strategy |
 | Venta (rama joaco, 88f85f5) | OperacionServiceBean Stateless; pendiente de integrar | Validar disponibilidad y registrar ventas | Repository/DAO y OperacionStrategy con VentaStrategy |
+| Registro/Login (Zoe) | Pendiente de verificar con su implementación | Alta de usuarios, autenticación, cierre de sesión y vínculo usuario-portfolio | Pendientes de verificar; no se atribuyen patrones sin revisar el código |
 
 La simulación es una función de Portfolio. No existe un SimuladorPortfolioServiceBean independiente. Los recursos HTTP de consulta y simulación representan entradas al mismo componente y a la misma conversación por sesión.
 
@@ -42,6 +45,14 @@ Diez AAPL a USD 180 y cinco a USD 210 producen 15 unidades, USD 2.850 de costo y
 
 El cálculo acepta COMPRA y rechaza tipos no soportados. Antes de integrar Venta deben acordarse descuento de cantidades/costo, orden de movimientos y ganancia realizada. La revisión local de joaco (88f85f5) contiene OperacionServiceBean @Stateless, OperacionStrategy y VentaStrategy @Dependent; se describen como código externo, no como funcionalidad integrada.
 
+## Registro/Login: cuarto componente
+
+Registro y Login se consideran un único componente porque reúnen el alta y acceso a la cuenta. Zoe es responsable de su implementación. La responsabilidad acordada incluye registrar usuarios, autenticar, cerrar sesión y mantener la asociación entre usuario, principal, rol y portfolio. Se integra con Compra, Venta y Portfolio mediante una identidad estable del contenedor.
+
+La arquitectura prevista separa presentación (pantallas y recursos de acceso), negocio (reglas de registro y autenticación) y datos (persistencia de usuarios). Esta descripción define el contrato a integrar, no clases ya verificadas. El tipo de EJB, los callbacks y los patrones de Registro/Login deben completarse al revisar la implementación de Zoe. No se asume que sea Stateless ni que ya aplique Strategy.
+
+La autenticación BASIC y la autorización declarativa actuales permiten probar Compra y Portfolio; no equivalen al componente Registro/Login terminado. La entrega debe demostrar el alta, el acceso, el rechazo de credenciales inválidas y el cierre de sesión una vez integrado.
+
 ## Tres patrones y su justificación
 
 **Repository/DAO:** InstrumentoRepository, CatalogoMercadoRepository, OrdenRepository, OperacionRepository y PortfolioRepository encapsulan EntityManager y consultas. Compra y Portfolio reutilizan esta capa sin duplicar persistencia ni incluir SQL en la presentación. Se cuenta como un patrón, no dos.
@@ -64,6 +75,6 @@ persistence.xml usa JTA. El build normal conserva ExampleDS y schema action none
 
 21 pruebas JUnit/Mockito verifican cálculos, validaciones, identidad, independencia de planes y posiciones actualizadas sin perder la simulación. La prueba real del WAR en WildFly verifica además roles, cookies, transacciones, rutas antiguas/nuevas y retiro de EJB. Ver PRUEBAS.md y EVIDENCIA.md para resultados.
 
-Para la defensa, registrar una compra, mostrar el resumen y planificar porcentajes en la misma sesión. Registrar otra compra: cambia la cartera y permanece el plan. Abrir otra sesión: misma cartera para la misma cuenta, plan independiente. Reiniciar el plan y luego cerrar la sesión, explicando la diferencia y mostrando los callbacks. La entrega completa necesita integrar y demostrar Venta.
+Para la defensa, registrar una compra, mostrar el resumen y planificar porcentajes en la misma sesión. Registrar otra compra: cambia la cartera y permanece el plan. Abrir otra sesión: misma cartera para la misma cuenta, plan independiente. Reiniciar el plan y luego cerrar la sesión, explicando la diferencia y mostrando los callbacks. La integración de los cuatro componentes necesita incorporar y demostrar Venta (Joaco) y Registro/Login (Zoe), incluyendo registro, acceso y cierre de sesión. El mínimo académico sigue siendo al menos tres componentes desplegados.
 
 Referencias: [Stateful](https://jakarta.ee/specifications/enterprise-beans/4.0/apidocs/jakarta/ejb/stateful), [Remove](https://jakarta.ee/specifications/enterprise-beans/4.0/apidocs/jakarta/ejb/remove) y [WildFly](https://docs.wildfly.org/30/Getting_Started_Guide.html).

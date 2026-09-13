@@ -1,6 +1,6 @@
-# InversorAR - Compra y Portfolio
+# InversorAR - Compra, Venta, Portfolio y Registro/Login
 
-Rama `mysql_componente`, creada desde `integracion_entrega`. Componentes de negocio acordados: **Compra, Venta y Portfolio**. Compra es `@Stateless`; Portfolio es `@Stateful` y reúne la consulta de inversiones persistentes y una simulación temporal de distribución. La simulación es una funcionalidad de Portfolio, no un cuarto componente. Venta pertenece al trabajo del compañero y sigue pendiente de integración.
+Rama `mysql_componente`, creada desde `integracion_entrega`. Los cuatro componentes acordados son **Compra, Venta, Portfolio y Registro/Login**. Registro y Login forman un único componente, a cargo de Zoe. Compra es `@Stateless`; Portfolio es `@Stateful` y reúne la consulta de inversiones persistentes y una simulación temporal de distribución. La simulación es una funcionalidad de Portfolio, no un componente adicional. Venta (Joaco) y Registro/Login (Zoe) siguen pendientes de integración en esta rama. La consigna exige al menos tres componentes; el proyecto define cuatro.
 
 Portfolio conserva capital y porcentajes por sesión HTTP. Relee las operaciones en cada consulta: una compra actualiza las posiciones sin perder la simulación. `PortfolioSesion` mantiene una única referencia EJB por sesión y rechaza cambios de identidad sobre la misma cookie. No inyectar PortfolioService directamente en cada recurso REST: utilizar PortfolioSesion.
 
@@ -13,6 +13,7 @@ Stateful y Stateless son tipos de EJB; Strategy es un patrón de diseño. No son
 | Compra | CompraServiceBean @Stateless: catálogo, validación y registro de compras | Repository/DAO |
 | Portfolio | PortfolioServiceBean @Stateful: consultas persistentes y planificación temporal por sesión | Service Facade, Repository/DAO y Strategy de cotización |
 | Venta, fuera de esta rama | En joaco (88f85f5), OperacionServiceBean @Stateless delega las reglas en VentaStrategy; pendiente de integración | Repository/DAO y Strategy de operación |
+| Registro/Login, Zoe | Alta de usuarios, autenticación y cierre de sesión; pendiente de integrar y revisar su implementación | Tipo EJB y patrones pendientes de verificar con Zoe |
 
 [Texto breve para el equipo](docs/RESUMEN_COMPONENTES.md), [decisiones técnicas](docs/TECNICO.md) y [evidencia real de ciclo de vida](docs/EVIDENCIA.md). Compra y Portfolio tienen callbacks @PostConstruct/@PreDestroy; Portfolio también tiene @Remove. Los registros del contenedor documentan su ejecución.
 
@@ -70,7 +71,7 @@ El cliente no envía un portfolioId. La antigua ruta `/portfolios/1/resumen` se 
 
 - [Decisiones técnicas actualizadas](docs/TECNICO.md). `docs/TECNICO.pdf` corresponde a la versión anterior; no refleja este refactor ni se presenta como documento vigente de entrega.
 - [Arquitectura](docs/ARQUITECTURA.md), [requisitos y checklist](docs/REQUISITOS.md), [tecnologías](docs/TECNOLOGIAS.md).
-- [Integración con Login, BD y Venta](docs/INTEGRACION.md).
+- [Integración con Registro/Login, BD y Venta](docs/INTEGRACION.md).
 - [Pruebas y demo](docs/PRUEBAS.md).
 
 Patrones presentes: Repository/DAO, Service Facade y Strategy de cotización. Compra usa EJB stateless y transacción REQUIRED; Portfolio usa EJB stateful con callbacks visibles y cierre explícito; sus consultas tienen transacción REQUIRED y la planificación NOT_SUPPORTED.

@@ -11,9 +11,13 @@ REST Portfolio y su simulación          v
                                   PortfolioActual -> cartera del principal autenticado
 ```
 
-Los tres componentes de negocio son Compra, Venta y Portfolio. En esta rama están implementados Compra y Portfolio; Venta se integra desde el trabajo del compañero. La simulación pertenece a Portfolio. Tener varios resources, DTOs o repositories no convierte cada clase en otro componente de negocio.
+Los cuatro componentes del proyecto son Compra, Venta, Portfolio y Registro/Login. Registro y Login forman un único componente de identidad, a cargo de Zoe. En esta rama están integrados Compra y Portfolio; faltan Venta (Joaco) y Registro/Login (Zoe). La simulación pertenece a Portfolio. Tener varios resources, DTOs o repositories no convierte cada clase en otro componente de negocio.
 
 Presentación recibe HTTP y devuelve DTOs. Compra valida y registra operaciones. Portfolio es una Service Facade: reúne identidad, repositorios, consolidación, cotización y planificación detrás de su interfaz local. Datos encapsula JPA mediante Repository/DAO. CotizacionStrategy desacopla la fuente del precio; CotizacionCatalogo es la implementación actual.
+
+## Registro/Login: componente de identidad
+
+Responsabilidades acordadas: alta de usuarios, autenticación, cierre de sesión y asociación entre usuario, principal del contenedor y portfolio. Su organización en capas debe integrar pantallas/recursos, servicio de identidad y persistencia de usuarios. Los nombres de clases, tipo de EJB y patrones se documentarán al revisar la implementación de Zoe; no se dan por implementados. BASIC y RolesAllowed ya disponibles son infraestructura de seguridad utilizada por la app, no evidencia de que Registro/Login esté completo.
 
 ## Estado y ciclo de vida
 
