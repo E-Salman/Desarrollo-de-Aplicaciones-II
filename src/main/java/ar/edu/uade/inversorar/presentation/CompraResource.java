@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Context;
+import jakarta.servlet.http.HttpServletRequest;
 
 @jakarta.enterprise.context.RequestScoped
 @Path("/")
@@ -17,9 +19,13 @@ public class CompraResource {
     @Inject private CompraService compraService;
     @Inject private VentaService ventaService;
     @GET @Path("instrumentos") public Response instrumentos() { return Response.ok(compraService.listarInstrumentos()).build(); }
-    @Inject private ar.edu.uade.inversorar.business.PortfolioService portfolioService;
+    @Inject private PortfolioSesion portfolioSesion;
+    @Context private HttpServletRequest httpRequest;
     @POST @Path("compras") @Consumes(MediaType.APPLICATION_JSON)
     public Response comprar(CompraRequest request) {
+        // Validar la identidad de la conversación antes de persistir la compra.
+        httpRequest.getSession(true);
+        var portfolioService = portfolioSesion.servicio(httpRequest.getUserPrincipal().getName());
         try { compraService.registrarCompra(request); return Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build(); }
         catch (ReglaNegocioException e) { return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorDto(e.getMessage())).build(); }
     }

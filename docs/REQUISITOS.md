@@ -24,6 +24,20 @@
 
 | Requisito | Estado y evidencia |
 |---|---|
+| Compra funcional en capas | REST/dashboard, interfaz EJB stateless, validaciones y repositories |
+| Portfolio funcional en capas | REST/dashboard, interfaz EJB stateful, DTOs, repositories y planificación temporal |
+| Tres componentes de entrega | Compra, Venta y Portfolio; falta integrar y demostrar Venta |
+| Al menos un stateless | CompraServiceBean |
+| Al menos un stateful | PortfolioServiceBean por sesión HTTP |
+| Inicialización y destrucción | Compra y Portfolio con PostConstruct/PreDestroy; Remove al cerrar Portfolio |
+| Tres patrones diferentes | Repository/DAO, Service Facade y Strategy; justificados en TECNICO.md |
+| Autenticación y rol | BASIC del contenedor y RolesAllowed USUARIO; login definitivo pendiente |
+| Transacciones | Compra y consultas de Portfolio REQUIRED; planificación NOT_SUPPORTED |
+| MySQL | Perfil preparado; esquema y conexión del equipo pendientes |
+| Documento de 5 a 8 páginas | El Word del equipo debe actualizarse a esta organización. El PDF anterior queda histórico |
+| Demo y defensa | PRUEBAS.md, EVIDENCIA.md y explicación de decisiones en TECNICO.md |
+
+La simulación es una funcionalidad de Portfolio, no otro componente. No se incluyen historial/riesgo, precios en vivo, pagos reales ni conversión multimoneda. Ganancia actual significa ganancia no realizada; integrar Venta exige acordar costo remanente y ganancia realizada.
 | Compra funcional en capas | Implementada: REST/dashboard, interfaz EJB, validaciones y repositories |
 | Venta funcional en capas | Implementada: `VentaService`/`VentaServiceBean`, valida cantidad poseída, consolidada en `PortfolioService` a costo promedio ponderado |
 | Portfolio funcional en capas | Implementado: interfaz + stateless (Service Facade), DTOs, REST y dashboard |
