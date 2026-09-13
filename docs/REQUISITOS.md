@@ -2,17 +2,17 @@
 
 | Requisito | Estado y evidencia |
 |---|---|
-| Compra funcional en capas | Implementada: REST/dashboard, interfaz EJB, validaciones y repositories |
-| Portfolio funcional en capas | Implementado: interfaz + stateless, DTOs, REST y dashboard |
-| Tres componentes de entrega | Pendiente integrar/desplegar Venta; simulador es apoyo y no se presenta como reemplazo |
-| Al menos un stateless | CompraServiceBean y PortfolioServiceBean |
-| Al menos un stateful | SimuladorPortfolioServiceBean por sesión HTTP |
-| Inicialización/destrucción | Compra y Simulador con PostConstruct/PreDestroy, logging; Remove para cerrar simulación |
-| Tres patrones diferentes | Repository/DAO, Service Facade, Strategy; justificados en TECNICO |
-| Autenticación y rol | web.xml BASIC + USUARIO y RolesAllowed en EJB; login definitivo del compañero pendiente |
-| Transacciones | Compra REQUIRED, JTA y ApplicationException rollback=true |
-| MySQL | Perfil/configuración preparados; despliegue en esquema del equipo pendiente |
-| Documento de 5-8 páginas | TECNICO.pdf de seis páginas, fuente TECNICO.md |
-| Demo y defensa | PRUEBAS.md y TECNICO.md; completar demo general al integrar Venta |
+| Compra funcional en capas | REST/dashboard, interfaz EJB stateless, validaciones y repositories |
+| Portfolio funcional en capas | REST/dashboard, interfaz EJB stateful, DTOs, repositories y planificación temporal |
+| Tres componentes de entrega | Compra, Venta y Portfolio; falta integrar y demostrar Venta |
+| Al menos un stateless | CompraServiceBean |
+| Al menos un stateful | PortfolioServiceBean por sesión HTTP |
+| Inicialización y destrucción | Compra y Portfolio con PostConstruct/PreDestroy; Remove al cerrar Portfolio |
+| Tres patrones diferentes | Repository/DAO, Service Facade y Strategy; justificados en TECNICO.md |
+| Autenticación y rol | BASIC del contenedor y RolesAllowed USUARIO; login definitivo pendiente |
+| Transacciones | Compra y consultas de Portfolio REQUIRED; planificación NOT_SUPPORTED |
+| MySQL | Perfil preparado; esquema y conexión del equipo pendientes |
+| Documento de 5 a 8 páginas | El Word del equipo debe actualizarse a esta organización. El PDF anterior queda histórico |
+| Demo y defensa | PRUEBAS.md, EVIDENCIA.md y explicación de decisiones en TECNICO.md |
 
-No se incluyen historial/riesgo del simulador, datos históricos, pagos reales ni conversión multimoneda. El catálogo es ilustrativo. Capital invertido significa costo de las posiciones compradas; ganancia es no realizada. La integración de ventas exige definir costo remanente y ganancia realizada.
+La simulación es una funcionalidad de Portfolio, no otro componente. No se incluyen historial/riesgo, precios en vivo, pagos reales ni conversión multimoneda. Ganancia actual significa ganancia no realizada; integrar Venta exige acordar costo remanente y ganancia realizada.

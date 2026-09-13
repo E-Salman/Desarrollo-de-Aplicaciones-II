@@ -1,4 +1,4 @@
-"""Prueba del WAR sobre una base de demo VACÍA. Crea una compra de prueba.
+"""Prueba del WAR sobre una base de demo VACÍA. Crea dos compras de prueba.
 Requiere ana/bruno con USUARIO y lector con LECTOR; contraseñas por entorno.
 Usar solo en una instalación aislada. No reinicia ni borra ninguna base.
 """
@@ -30,15 +30,38 @@ assert r['capitalInvertido']==1800 and r['patrimonioTotal']==1950 and r['gananci
 assert call(bruno,'GET','/api/portfolio/resumen','bruno')['capitalInvertido']==0
 p=call(ana,'GET','/api/portfolio/posiciones','ana')[0]; assert p['precioPromedio']==180 and abs(p['rendimientoPorcentaje']-8.3333)<.00001
 call(ana,'GET','/api/portfolios/1/resumen','ana',expected=404)
-call(ana,'PUT','/api/simulador/capital','ana',{'valor':1000000})
-r=call(ana,'PUT','/api/simulador/porcentajes/ACCION','ana',{'valor':40}); assert r['importes']['ACCION']==400000
-call(ana,'PUT','/api/simulador/porcentajes/BONO','ana',{'valor':70},400)
+call(ana,'PUT','/api/portfolio/simulacion/capital','ana',{'valor':1000000})
+r=call(ana,'PUT','/api/portfolio/simulacion/porcentajes/ACCION','ana',{'valor':40}); assert r['importes']['ACCION']==400000
+call(ana,'PUT','/api/portfolio/simulacion/porcentajes/BONO','ana',{'valor':70},400)
+# El alias anterior y las rutas de Portfolio comparten una sola conversación.
 assert call(ana,'GET','/api/simulador','ana')['importes']['ACCION']==400000
-assert call(bruno,'GET','/api/simulador','bruno')['capital']==0
+assert call(bruno,'GET','/api/portfolio/simulacion','bruno')['capital']==0
 call(ana,'GET','/api/simulador','bruno',expected=403)
-call(ana,'DELETE','/api/simulador','ana',expected=204)
+call(ana,'GET','/api/portfolio/resumen','bruno',expected=403)
+call(ana,'POST','/api/compras','bruno',{'ticker':'AAPL','cantidad':1,'precioUnitario':180,'fecha':str(datetime.date.today())},403)
+call(ana,'DELETE','/api/portfolio/sesion','bruno',expected=403)
+assert call(bruno,'GET','/api/portfolio/resumen','bruno')['capitalInvertido']==0
+# Nueva compra en la misma sesión: las posiciones se refrescan y el plan permanece.
+r=call(ana,'POST','/api/compras','ana',{'ticker':'AAPL','cantidad':5,'precioUnitario':210,'fecha':str(datetime.date.today())},201)
+assert r['capitalInvertido']==2850 and r['gananciaTotal']==75,r
+assert call(ana,'GET','/api/portfolio/resumen','ana')['posiciones'][0]['precioPromedio']==190
+assert call(ana,'GET','/api/portfolio/simulacion','ana')['capital']==1000000
+# Otra sesión de la misma cuenta ve inversiones actuales, pero no comparte la simulación.
+otra=client()
+assert call(otra,'GET','/api/portfolio/resumen','ana')['capitalInvertido']==2850
+assert call(otra,'GET','/api/portfolio/simulacion','ana')['capital']==0
+call(ana,'DELETE','/api/portfolio/simulacion','ana',expected=204)
 assert call(ana,'GET','/api/simulador','ana')['capital']==0
+assert call(ana,'GET','/api/portfolio/resumen','ana')['capitalInvertido']==2850
+call(ana,'PUT','/api/simulador/capital','ana',{'valor':500})
+assert call(ana,'GET','/api/portfolio/simulacion','ana')['capital']==500
 call(ana,'DELETE','/api/simulador','ana',expected=204)
-call(bruno,'DELETE','/api/simulador','bruno',expected=204)
+call(ana,'PUT','/api/portfolio/simulacion/capital','ana',{'valor':700})
+call(ana,'DELETE','/api/portfolio/sesion','ana',expected=204)
+assert call(ana,'GET','/api/portfolio/simulacion','ana')['capital']==0
+assert call(ana,'GET','/api/portfolio/resumen','ana')['capitalInvertido']==2850
+call(ana,'DELETE','/api/portfolio/sesion','ana',expected=204)
+call(bruno,'DELETE','/api/portfolio/sesion','bruno',expected=204)
+call(otra,'DELETE','/api/portfolio/sesion','ana',expected=204)
 print('Todas las aserciones correctas.')
 print('\n'.join(checks))

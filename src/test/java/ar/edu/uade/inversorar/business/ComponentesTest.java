@@ -61,20 +61,32 @@ class ComponentesTest {
         var enorme=request(); enorme.precioUnitario=n("999999999999999"); assertThrows(ReglaNegocioException.class,()->bean.registrarCompra(enorme));
         verifyNoInteractions(repo);
     }
-    @Test void simuladorConservaEstadoYNoComparteConversaciones() {
-        var a=new SimuladorPortfolioServiceBean(); var b=new SimuladorPortfolioServiceBean();
+    @Test void portfolioConservaPlanificacionYNoComparteConversaciones() {
+        var a=new PortfolioServiceBean(); var b=new PortfolioServiceBean();
         a.definirCapital(n("1000000")); a.definirPorcentaje(TipoInstrumento.ACCION,n("40")); a.definirPorcentaje(TipoInstrumento.BONO,n("30"));
-        igual("400000",a.calcular().importes.get(TipoInstrumento.ACCION)); igual("300000",a.calcular().disponible);
-        igual("0",b.calcular().capital); assertTrue(b.calcular().porcentajes.isEmpty());
-        a.calcular().porcentajes.clear(); assertEquals(2,a.calcular().porcentajes.size());
-        a.cerrar(); igual("0",a.calcular().capital);
+        igual("400000",a.calcularSimulacion().importes.get(TipoInstrumento.ACCION)); igual("300000",a.calcularSimulacion().disponible);
+        igual("0",b.calcularSimulacion().capital); assertTrue(b.calcularSimulacion().porcentajes.isEmpty());
+        a.calcularSimulacion().porcentajes.clear(); assertEquals(2,a.calcularSimulacion().porcentajes.size());
+        a.reiniciarSimulacion(); igual("0",a.calcularSimulacion().capital);
     }
     @Test void simuladorRechazaExcesoSinCambiarEstado() {
-        var a=new SimuladorPortfolioServiceBean(); a.definirPorcentaje(TipoInstrumento.ACCION,n("60"));
+        var a=new PortfolioServiceBean(); a.definirPorcentaje(TipoInstrumento.ACCION,n("60"));
         assertThrows(ReglaNegocioException.class,()->a.definirPorcentaje(TipoInstrumento.BONO,n("41")));
         assertThrows(ReglaNegocioException.class,()->a.definirCapital(n("-1")));
-        assertEquals(1,a.calcular().porcentajes.size()); a.definirPorcentaje(TipoInstrumento.ACCION,n("100"));
-        a.definirCapital(n("0.01")); igual("0",a.calcular().disponible);
+        assertEquals(1,a.calcularSimulacion().porcentajes.size()); a.definirPorcentaje(TipoInstrumento.ACCION,n("100"));
+        a.definirCapital(n("0.01")); igual("0",a.calcularSimulacion().disponible);
+    }
+    @Test void portfolioActualizaPosicionesSinPerderSimulacion() throws Exception {
+        var bean=portfolio(); var actual=mock(PortfolioActual.class); var repo=mock(OperacionRepository.class);
+        var propio=mock(Portfolio.class); when(propio.getId()).thenReturn(42L); when(actual.obtener()).thenReturn(propio);
+        when(repo.porPortfolio(42L)).thenReturn(List.of(compra("10","180")), List.of(compra("10","180"),compra("5","210")));
+        inyectar(bean,"portfolioActual",actual); inyectar(bean,"operaciones",repo);
+        bean.definirCapital(n("1000")); bean.definirPorcentaje(TipoInstrumento.ACCION,n("40"));
+        igual("1800",bean.obtenerResumen().capitalInvertido);
+        igual("2850",bean.obtenerResumen().capitalInvertido);
+        igual("400",bean.calcularSimulacion().importes.get(TipoInstrumento.ACCION));
+        bean.reiniciarSimulacion(); igual("2850",bean.obtenerResumen().capitalInvertido);
+        verify(repo,never()).guardar(any());
     }
     @Test void resolverNoPermiteLlamadorSinRol() throws Exception {
         var bean=new PortfolioActualBean(); var contexto=mock(jakarta.ejb.SessionContext.class); var repo=mock(PortfolioRepository.class);

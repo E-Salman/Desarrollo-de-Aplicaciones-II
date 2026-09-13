@@ -1,17 +1,26 @@
 # Arquitectura por capas
 
 ```text
-Dashboard / REST de Compra -> CompraService @Stateless -> Repositories -> JPA/JTA
-Dashboard / REST Portfolio -> PortfolioService @Stateless -> Repositories + CotizacionStrategy
-                                  |                              |
-                             PortfolioActual               H2 / MySQL
-REST Simulador -> SimulacionSesion -> SimuladorPortfolioService @Stateful -> memoria temporal
+REST Compra -> CompraService @Stateless -> Repository/DAO -> JPA/JTA
+     | (resumen posterior)
+     v
+PortfolioSesion CDI @SessionScoped -> PortfolioService @Stateful
+     ^                                  | consultas: Repository + CotizacionStrategy
+     |                                  | planificación: capital y porcentajes en memoria
+REST Portfolio y su simulación          v
+                                  PortfolioActual -> cartera del principal autenticado
 ```
 
-Presentación valida el protocolo HTTP y devuelve DTOs. Negocio valida la compra, coordina transacciones y consolida posiciones. Datos contiene entidades y Repository/DAO; no conoce REST. PortfolioService es la Service Facade que compone operaciones y cotización para entregar un resumen. CotizacionStrategy desacopla el valor de mercado del algoritmo de agregación; CotizacionCatalogo es la estrategia activa.
+Los tres componentes de negocio son Compra, Venta y Portfolio. En esta rama están implementados Compra y Portfolio; Venta se integra desde el trabajo del compañero. La simulación pertenece a Portfolio. Tener varios resources, DTOs o repositories no convierte cada clase en otro componente de negocio.
 
-Compra solo lista instrumentos y registra compras. Portfolio no escribe operaciones. Ambos resuelven la cartera mediante PortfolioActual, sin recibir IDs arbitrarios del navegador. Cada EJB stateless puede atender clientes distintos; no guarda identidad ni operaciones en campos conversacionales.
+Presentación recibe HTTP y devuelve DTOs. Compra valida y registra operaciones. Portfolio es una Service Facade: reúne identidad, repositorios, consolidación, cotización y planificación detrás de su interfaz local. Datos encapsula JPA mediante Repository/DAO. CotizacionStrategy desacopla la fuente del precio; CotizacionCatalogo es la implementación actual.
 
-SimulacionSesion es un bean CDI SessionScoped serializable que conserva una referencia al EJB stateful por sesión. El EJB guarda capital y porcentajes entre peticiones. Cerrar la sesión invoca @Remove y luego @PreDestroy; @PermitAll en cerrar permite liberar recursos cuando ya terminó el contexto de autenticación. No hay endpoint público: todo /api requiere USUARIO. No se agrega una capa DAO ficticia al simulador porque no persiste datos.
+## Estado y ciclo de vida
 
-Ver [documento técnico](TECNICO.md) para fórmulas, decisiones y defensa, e [integración](INTEGRACION.md) para los contratos con otras ramas.
+PortfolioServiceBean es @Stateful y serializable. Sólo capital y porcentajes se guardan entre invocaciones; no conserva entidades ni resúmenes como caché. obtenerResumen y obtenerPosiciones consultan las operaciones actuales con REQUIRED. La simulación usa NOT_SUPPORTED y nunca guarda operaciones.
+
+PortfolioSesion es CDI @SessionScoped, serializable, y mantiene una referencia EJB por sesión HTTP. CompraResource valida la identidad de esa sesión antes de registrar una compra. Todos los resources de Portfolio utilizan el mismo holder, incluido el alias /simulador. Otra sesión del mismo usuario comparte sus inversiones persistentes, pero tiene una planificación independiente.
+
+@PostConstruct y @PreDestroy registran el identificador de conversación de Portfolio. DELETE /api/portfolio/simulacion sólo limpia el plan; DELETE /api/portfolio/sesion invalida la sesión HTTP y su callback llama a cerrar con @Remove. Lo mismo ocurre al expirar la sesión (30 minutos). @PermitAll en cerrar permite liberar recursos después de terminar la autenticación; los endpoints HTTP siguen exigiendo USUARIO.
+
+CompraServiceBean sigue siendo @Stateless, con callbacks propios. No mantiene conversaciones de clientes. Las futuras llamadas de Venta deben seguir resolviendo las posiciones reales desde persistencia, sin depender del capital simulado.

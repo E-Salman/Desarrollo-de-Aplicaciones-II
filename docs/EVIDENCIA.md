@@ -1,3 +1,34 @@
+# Evidencia de Portfolio stateful
+
+13 de septiembre de 2026. Rama integracion_entrega.
+
+- mvn test y mvn package: 13 pruebas sin fallos ni errores; WAR generado.
+- WildFly 30.0.1.Final aislado en 28080: 37 comprobaciones HTTP correctas.
+- Rutas nuevas y alias usan la misma conversación; otra sesión tiene un plan independiente.
+- Nueva compra conserva el plan y actualiza el resumen. Cambio de identidad rechazado antes de guardar.
+- Reiniciar el plan conserva inversiones; cerrar la sesión retira Portfolio con @Remove.
+- Redespliegue con schema action none conserva las dos compras (costo 2850, ganancia 75).
+- WAR verificado sin SimuladorPortfolioServiceBean. Servidor QA apagado al finalizar.
+
+## Callbacks observados en el contenedor
+
+    2026-09-13 18:33:21,818 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio inicializado b60ed55c-2f5b-40c7-800a-9aacd8cf1b50
+    2026-09-13 18:33:22,121 INFO  [ar.edu.uade.inversorar.business.CompraServiceBean] (default task-1) CompraServiceBean inicializado
+    2026-09-13 18:33:22,181 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio inicializado 2ca642eb-b4ce-4ff9-bfaf-94349329a9e4
+    2026-09-13 18:33:22,426 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio inicializado ae07b650-9a1d-4888-90c2-27fbb6dd92df
+    2026-09-13 18:33:22,500 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio destruido b60ed55c-2f5b-40c7-800a-9aacd8cf1b50
+    2026-09-13 18:33:22,505 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio inicializado 0239f8f3-aefe-4def-8e85-de5ff924ecb4
+    2026-09-13 18:33:22,525 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio destruido 0239f8f3-aefe-4def-8e85-de5ff924ecb4
+    2026-09-13 18:33:22,530 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio destruido 2ca642eb-b4ce-4ff9-bfaf-94349329a9e4
+    2026-09-13 18:33:22,535 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio destruido ae07b650-9a1d-4888-90c2-27fbb6dd92df
+    2026-09-13 18:36:32,736 INFO  [ar.edu.uade.inversorar.business.CompraServiceBean] (ServerService Thread Pool -- 94) CompraServiceBean destruido
+    2026-09-13 18:37:12,894 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (default task-1) Portfolio inicializado 1b8dc167-f885-4ed7-95cc-900bb21ae0a6
+    2026-09-13 18:37:23,673 INFO  [ar.edu.uade.inversorar.business.PortfolioServiceBean] (ServerService Thread Pool -- 93) Portfolio destruido 1b8dc167-f885-4ed7-95cc-900bb21ae0a6
+
+## Evidencia histórica anterior al refactor
+
+Los registros siguientes pertenecen a la arquitectura anterior y se conservan como historial.
+
 # Evidencia de ejecución - 13/09/2026
 
 JDK 17.0.12, Maven 3.9.9, WildFly 30.0.1.Final, H2 de una instalación aislada en localhost. Ninguna base externa fue modificada. Se cerró el servidor al finalizar.
