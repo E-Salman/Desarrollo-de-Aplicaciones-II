@@ -41,6 +41,10 @@
             ＋ Comprar
         </button>
 
+        <button type="button" id="abrirModalVenta" class="secundario" disabled>
+            Vender
+        </button>
+
         <details class="usuario-menu">
 
             <summary
@@ -89,12 +93,10 @@
 
                 <div class="menu-separador"></div>
 
-                <a
-                    href="<%= request.getContextPath() %>/login"
-                    class="menu-opcion cerrar-sesion"
-                >
-                    Cerrar sesión
-                </a>
+                <form method="post" action="<%= request.getContextPath() %>/logout">
+                    <input type="hidden" name="csrf" value="${sessionScope.csrf}">
+                    <button type="submit" class="menu-opcion cerrar-sesion">Cerrar sesión</button>
+                </form>
 
             </div>
 
@@ -493,11 +495,42 @@
 </dialog>
 
 
+<dialog id="modalVenta" aria-labelledby="tituloVenta">
+    <form id="formVenta">
+        <div class="modalTitulo">
+            <h2 id="tituloVenta">Vender instrumento</h2>
+            <button type="button" id="cerrarModalVenta" class="cerrar" aria-label="Cerrar venta">×</button>
+        </div>
+        <p id="disponibilidadVenta" class="sub" role="status"></p>
+        <label>Instrumento de tu portfolio
+            <select id="instrumentoVenta" required>
+                <option value="">Seleccioná un instrumento…</option>
+            </select>
+        </label>
+        <div class="dos">
+            <label>Ticker <input id="tickerVenta" readonly></label>
+            <label>Cantidad
+                <input id="cantidadVenta" type="number" min="0.0000000001" step="any" required>
+            </label>
+        </div>
+        <button type="button" id="venderTodo" class="secundario">Vender toda la posición</button>
+        <div class="dos">
+            <label>Precio por unidad <span id="monedaVenta"></span>
+                <input id="precioVenta" type="number" min="0.0000000001" step="any" required>
+            </label>
+            <label>Total de la venta <input id="totalVenta" readonly></label>
+        </div>
+        <label>Fecha de venta <input id="fechaVenta" type="date" required></label>
+        <p id="errorVenta" class="error" role="alert"></p>
+        <button id="guardarVenta" class="comprar" type="submit" disabled>Registrar venta</button>
+    </form>
+</dialog>
+
 <script>
     window.APP_CONTEXT = '<%= request.getContextPath() %>';
 </script>
 
-<script src="<%= request.getContextPath() %>/assets/dashboard.js"></script>
+<script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20260914-ventas"></script>
 
 </body>
 

@@ -56,6 +56,10 @@
             action="<%= request.getContextPath() %>/login"
         >
 
+            <input type="hidden" name="csrf" value="${sessionScope.csrf}">
+            <% if ("1".equals(request.getParameter("registrado"))) { %>
+                <p>Cuenta creada. Iniciá sesión con tu email y contraseña.</p>
+            <% } %>
             <label for="email">
                 Email
             </label>

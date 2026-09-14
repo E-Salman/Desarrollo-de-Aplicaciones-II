@@ -25,6 +25,7 @@ public class UsuarioRepository {
 
     public void guardar(Usuario usuario) {
         em.persist(usuario);
+        em.flush();
     }
 
     public Optional<Usuario> buscarPorId(Long id) {

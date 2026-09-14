@@ -56,6 +56,7 @@
             action="<%= request.getContextPath() %>/registro"
         >
 
+            <input type="hidden" name="csrf" value="${sessionScope.csrf}">
             <label for="nombre">
                 Nombre
             </label>
@@ -105,8 +106,9 @@
                     id="password"
                     name="password"
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    minlength="6"
+                    placeholder="Entre 8 y 128 caracteres"
+                    minlength="8"
+                    maxlength="128"
                     required
                 >
 
@@ -153,6 +155,9 @@
             %>
 
 
+            <label for="confirmarPassword">Confirmar contraseña</label>
+            <input id="confirmarPassword" name="confirmarPassword" type="password"
+                   autocomplete="new-password" minlength="8" maxlength="128" required>
             <button
                 type="submit"
                 class="main-button"

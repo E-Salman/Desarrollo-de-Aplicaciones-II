@@ -15,6 +15,7 @@ public class Portfolio {
     public Portfolio(String nombre, String propietario) { this.nombre = nombre; this.propietario = propietario; }
     public String getPropietario() { return propietario; }
     public Long getUsuarioId() { return usuarioId; }
+    public void vincularUsuario(Long usuarioId) { this.usuarioId = usuarioId; }
     public Long getId() { return id; }
     public String getNombre() { return nombre; }
 }

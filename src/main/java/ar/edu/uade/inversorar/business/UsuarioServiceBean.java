@@ -7,6 +7,12 @@ import ar.edu.uade.inversorar.data.PasswordResetTokenRepository;
 
 import jakarta.ejb.EJB;
 import jakarta.ejb.Stateless;
+import jakarta.ejb.EJBException;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.inject.Inject;
+import ar.edu.uade.inversorar.security.Passwords;
+import java.util.Locale;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -14,6 +20,11 @@ import java.util.UUID;
 
 @Stateless
 public class UsuarioServiceBean implements UsuarioService {
+    @Inject private Passwords passwords;
+
+    private String normalizarEmail(String email) {
+        return email == null ? "" : email.strip().toLowerCase(Locale.ROOT);
+    }
 
     @EJB
     private UsuarioRepository usuarioRepository;
@@ -25,7 +36,7 @@ public class UsuarioServiceBean implements UsuarioService {
     public Usuario login(String email, String password) {
 
         Optional<Usuario> usuarioEncontrado =
-                usuarioRepository.buscarPorEmail(email);
+                usuarioRepository.buscarPorEmail(normalizarEmail(email));
 
         if (usuarioEncontrado.isEmpty()) {
             return null;
@@ -33,7 +44,7 @@ public class UsuarioServiceBean implements UsuarioService {
 
         Usuario usuario = usuarioEncontrado.get();
 
-        if (!usuario.getPassword().equals(password)) {
+        if (!passwords.verificar(password, usuario.getPassword())) {
             return null;
         }
 
@@ -41,12 +52,21 @@ public class UsuarioServiceBean implements UsuarioService {
     }
 
     @Override
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     public Usuario registrar(
             String nombre,
             String apellido,
             String email,
             String password
     ) {
+        email = normalizarEmail(email);
+        if (nombre == null || nombre.isBlank() || nombre.strip().length() > 100
+                || apellido == null || apellido.isBlank() || apellido.strip().length() > 100)
+            throw new RegistroException("Completá nombre y apellido (hasta 100 caracteres cada uno).");
+        if (email.length() > 255 || !email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
+            throw new RegistroException("Ingresá un email válido.");
+        if (password == null || password.length() < 8 || password.length() > 128)
+            throw new RegistroException("La contraseña debe tener entre 8 y 128 caracteres.");
 
         Optional<Usuario> usuarioExistente =
                 usuarioRepository.buscarPorEmail(email);
@@ -57,13 +77,19 @@ public class UsuarioServiceBean implements UsuarioService {
 
         Usuario nuevoUsuario =
                 new Usuario(
-                        nombre,
-                        apellido,
+                        nombre.strip(),
+                        apellido.strip(),
                         email,
-                        password
+                        passwords.generar(password)
                 );
 
-        usuarioRepository.guardar(nuevoUsuario);
+        try {
+            usuarioRepository.guardar(nuevoUsuario);
+        } catch (EJBException e) {
+            // La inserción ya terminó/retrocedió en una transacción independiente.
+            if (usuarioRepository.buscarPorEmail(email).isPresent()) return null;
+            throw e;
+        }
 
         return nuevoUsuario;
     }

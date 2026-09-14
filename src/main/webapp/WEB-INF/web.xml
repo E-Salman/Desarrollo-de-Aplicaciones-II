@@ -2,6 +2,5 @@
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" version="6.0">
   <session-config><session-timeout>30</session-timeout><cookie-config><http-only>true</http-only></cookie-config></session-config>
   <security-constraint><web-resource-collection><web-resource-name>Aplicacion privada</web-resource-name><url-pattern>/api/*</url-pattern><url-pattern>/dashboard</url-pattern></web-resource-collection><auth-constraint><role-name>USUARIO</role-name></auth-constraint></security-constraint>
-  <login-config><auth-method>BASIC</auth-method><realm-name>ApplicationRealm</realm-name></login-config>
   <security-role><role-name>USUARIO</role-name></security-role>
 </web-app>

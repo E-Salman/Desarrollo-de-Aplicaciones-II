@@ -8,6 +8,10 @@
   async function api(path, options) {
     const response = await fetch(ctx + "/api" + path, options);
     if (!response.ok) {
+      if (response.status === 401) {
+        window.location.assign(ctx + "/login");
+        throw new Error("Tu sesión venció. Iniciá sesión nuevamente.");
+      }
       const error = await response.json().catch(() => ({}));
       throw new Error(error.mensaje || "No se pudo completar la operación (" + response.status + ").");
     }
@@ -122,16 +126,19 @@
   function cargarSelectVenta() {
     $("instrumentoVenta").innerHTML = '<option value="">Seleccioná un instrumento…</option>' +
       ultimoResumen.posiciones.map(p => '<option value="' + esc(p.ticker) + '">' + esc(p.nombre) + ' (' + esc(p.ticker) + ') — tenés ' + numero(p.cantidad) + '</option>').join("");
+    $("disponibilidadVenta").textContent = ultimoResumen.posiciones.length ? "" : "Todavía no tenés instrumentos para vender. Registrá una compra primero.";
   }
   $("abrirModalVenta").onclick = () => {
     cargarSelectVenta(); $("formVenta").reset();
     const hoy = new Date(); $("fechaVenta").value = new Date(hoy.getTime() - hoy.getTimezoneOffset()*60000).toISOString().slice(0,10);
     $("fechaVenta").max = $("fechaVenta").value; $("errorVenta").textContent = "";
+    $("instrumentoVenta").onchange({ target: $("instrumentoVenta") });
     modalVenta.showModal();
   };
   $("cerrarModalVenta").onclick = () => modalVenta.close();
   $("instrumentoVenta").onchange = e => {
     const p = ultimoResumen.posiciones.find(x => x.ticker === e.target.value);
+    $("guardarVenta").disabled = !p;
     $("tickerVenta").value = p?.ticker || ""; $("cantidadVenta").max = p?.cantidad || "";
     monedaVenta = p?.moneda || ""; $("monedaVenta").textContent = monedaVenta;
     $("precioVenta").value = p && dec(p.cantidad) ? (dec(p.actual) / dec(p.cantidad)).toFixed(10) : "";

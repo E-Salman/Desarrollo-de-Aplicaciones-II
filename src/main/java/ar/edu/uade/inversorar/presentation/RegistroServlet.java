@@ -1,83 +1,47 @@
 package ar.edu.uade.inversorar.presentation;
 
-import ar.edu.uade.inversorar.business.UsuarioService;
-import ar.edu.uade.inversorar.data.Usuario;
-
+import ar.edu.uade.inversorar.business.*;
 import jakarta.ejb.EJB;
+import jakarta.ejb.EJBException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
+import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet("/registro")
 public class RegistroServlet extends HttpServlet {
+    @EJB private UsuarioService usuarioService;
 
-    @EJB
-    private UsuarioService usuarioService;
-
-    @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
-
-        request
-            .getRequestDispatcher("/WEB-INF/views/registro.jsp")
-            .forward(request, response);
+    @Override protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        Csrf.preparar(request);
+        response.setHeader("Cache-Control", "no-store");
+        request.getRequestDispatcher("/WEB-INF/views/registro.jsp").forward(request, response);
     }
 
-    @Override
-    protected void doPost(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
-
-        String nombre =
-                request.getParameter("nombre");
-
-        String apellido =
-                request.getParameter("apellido");
-
-        String email =
-                request.getParameter("email");
-
-        String password =
-                request.getParameter("password");
-
-        Usuario usuario =
-                usuarioService.registrar(
-                        nombre,
-                        apellido,
-                        email,
-                        password
-                );
-
-        if (usuario == null) {
-
-            request.setAttribute(
-                    "error",
-                    "Ya existe una cuenta con ese email."
-            );
-
-            request
-                .getRequestDispatcher("/WEB-INF/views/registro.jsp")
-                .forward(request, response);
-
+    @Override protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        request.setCharacterEncoding("UTF-8");
+        if (!Csrf.valido(request)) { response.sendError(403); return; }
+        try {
+            String password = request.getParameter("password");
+            if (password == null || !password.equals(request.getParameter("confirmarPassword")))
+                throw new RegistroException("Las contraseñas no coinciden.");
+            var usuario = usuarioService.registrar(request.getParameter("nombre"),
+                    request.getParameter("apellido"), request.getParameter("email"), password);
+            if (usuario == null) throw new RegistroException("Ya existe una cuenta con ese email.");
+            response.sendRedirect(request.getContextPath() + "/login?registrado=1");
             return;
+        } catch (RegistroException e) {
+            response.setStatus(400);
+            request.setAttribute("error", e.getMessage());
+        } catch (EJBException e) {
+            Logger.getLogger(getClass().getName()).log(Level.WARNING, "No se pudo registrar la cuenta", e);
+            response.setStatus(503);
+            request.setAttribute("error", "No pudimos crear la cuenta. Intentá nuevamente más tarde.");
         }
-
-        HttpSession session = request.getSession();
-
-        session.setAttribute("usuarioId", usuario.getId());
-        session.setAttribute("nombreUsuario", usuario.getNombre());
-        session.setAttribute("emailUsuario", usuario.getEmail());
-
-        response.sendRedirect(
-                request.getContextPath() + "/dashboard"
-        );
+        doGet(request, response);
     }
 }
