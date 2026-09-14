@@ -26,4 +26,10 @@ public class UsuarioRepository {
     public void guardar(Usuario usuario) {
         em.persist(usuario);
     }
+
+    public Optional<Usuario> buscarPorId(Long id) {
+    return Optional.ofNullable(
+        em.find(Usuario.class, id)
+    );
+}
 }

@@ -15,4 +15,6 @@ public interface UsuarioService {
             String email,
             String password
     );
+
+    String generarTokenRecuperacion(String email);
 }

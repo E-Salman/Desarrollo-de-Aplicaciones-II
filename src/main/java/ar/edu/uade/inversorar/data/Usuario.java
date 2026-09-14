@@ -52,4 +52,8 @@ public class Usuario {
     public String getPassword() {
         return password;
     }
+    
+    public void cambiarPassword(String nuevaPassword) {
+    this.password = nuevaPassword;
+}
 }
