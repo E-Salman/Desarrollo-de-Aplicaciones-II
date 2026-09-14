@@ -9,5 +9,6 @@ public class ResumenPortfolioDto {
     public java.util.Map<String, TotalesMonedaDto> totalesPorMoneda = new java.util.TreeMap<>();
     public BigDecimal rendimientoPorcentaje;
     public BigDecimal capitalInvertido; public BigDecimal patrimonioTotal; public BigDecimal gananciaTotal;
+    public BigDecimal gananciaRealizada;
     public List<PosicionDto> posiciones;
 }

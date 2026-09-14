@@ -41,32 +41,29 @@ header {
     padding: 0 18px;
     border-bottom: 1px solid var(--border);
 }
+
+
 /* LOGO */
 
 .brand {
     display: flex;
     align-items: center;
-
     font-weight: 700;
 }
 
 .brand span {
     display: inline-grid;
     place-items: center;
-
     width: 21px;
     height: 21px;
-
     margin-right: 7px;
-
     background: #063d27;
     color: var(--accent);
-
     border-radius: 5px;
 }
 
 
-/* NAVEGACION  */
+/* NAVEGACION */
 
 nav {
     flex: 1;
@@ -78,7 +75,7 @@ nav {
 
 
 /* =========================
-   DERECHA
+   DERECHA DEL HEADER
    ========================= */
 
 .header-derecha {
@@ -90,32 +87,23 @@ nav {
 
 
 /* =========================
-   COMPRAR
+   BOTON COMPRAR
    ========================= */
 
 #abrirModal {
     position: static;
-
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
     flex: 0 0 auto;
-
     width: auto;
     height: 34px;
-
     margin: 0;
-
     padding: 0 14px;
-
     background: var(--accent);
     color: #001c0e;
-
     border-radius: 5px;
-
     font-weight: 700;
-
     white-space: nowrap;
 }
 
@@ -125,19 +113,15 @@ nav {
 
 
 /* =========================
-   USUARIO
+   MENU DE USUARIO
    ========================= */
 
 .usuario-menu {
     position: relative;
-
     display: block;
-
     flex: 0 0 42px;
-
     width: 42px;
     height: 34px;
-
     margin: 0;
     padding: 0;
 }
@@ -162,25 +146,18 @@ nav {
 
 .usuario-boton {
     position: static;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     width: 42px;
     height: 34px;
-
     margin: 0;
     padding: 0;
-
     gap: 4px;
-
     background: transparent;
     color: var(--muted);
-
     border: 1px solid var(--border);
     border-radius: 6px;
-
     cursor: pointer;
 }
 
@@ -190,7 +167,7 @@ nav {
 }
 
 
-/* Flecha */
+/* FLECHA */
 
 .usuario-flecha {
     transition: transform 0.15s ease;
@@ -202,48 +179,33 @@ nav {
 
 
 /* =========================
-   DROPDOWN
+   DROPDOWN USUARIO
    ========================= */
 
 .usuario-dropdown {
     position: absolute;
-
     top: 42px;
     right: 0;
-
     width: 170px;
-
     padding: 5px;
-
     background: var(--surface);
-
     border: 1px solid var(--border);
     border-radius: 8px;
-
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
-
     z-index: 9999;
 }
 
-
 .usuario-dropdown .menu-opcion {
     display: block;
-
     width: 100%;
-
     margin: 0;
     padding: 9px 10px;
-
     background: transparent;
     color: var(--text);
-
     border-radius: 5px;
-
     font-size: 11px;
     font-weight: 400;
-
     text-decoration: none;
-
     white-space: nowrap;
 }
 
@@ -253,9 +215,7 @@ nav {
 
 .menu-separador {
     height: 1px;
-
     margin: 4px 3px;
-
     background: var(--border);
 }
 
@@ -301,9 +261,7 @@ h2 {
 .metricas {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-
     gap: 10px;
-
     margin: 16px 0;
 }
 
@@ -352,13 +310,10 @@ strong {
 
 .posicion {
     min-height: 60px;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
-
     padding: 10px 14px;
-
     border-bottom: 1px solid var(--border);
 }
 
@@ -390,15 +345,11 @@ strong {
 
 dialog {
     width: min(390px, calc(100vw - 32px));
-
     padding: 0;
-
     color: var(--text);
     background: var(--surface);
-
     border: 1px solid #303642;
     border-radius: 10px;
-
     box-shadow: 0 20px 80px #000;
 }
 
@@ -414,24 +365,19 @@ form {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     margin-bottom: 14px;
 }
 
 .cerrar {
     background: transparent;
     color: var(--muted);
-
     padding: 0;
-
     font-size: 19px;
 }
 
 label {
     display: block;
-
     margin: 9px 0;
-
     font-size: 10px;
     color: var(--muted);
 }
@@ -439,16 +385,11 @@ label {
 input,
 select {
     display: block;
-
     margin-top: 5px;
-
     width: 100%;
-
     border: 1px solid var(--border);
     border-radius: 5px;
-
     padding: 8px;
-
     background: var(--surface2);
     color: var(--text);
 }
@@ -460,34 +401,154 @@ input[readonly] {
 .dos {
     display: grid;
     grid-template-columns: 1fr 1fr;
-
     gap: 10px;
 }
 
 .error {
     min-height: 16px;
-
     margin: 4px 0;
-
     font-size: 11px;
 }
 
 
-/* ESTE ES SOLO EL BOTON DEL MODAL */
+/* BOTON DEL MODAL */
 
 .comprar {
     width: 100%;
-
     margin-top: 2px;
-
     padding: 9px 16px;
-
     background: var(--accent);
     color: #001c0e;
-
     border-radius: 5px;
-
     font-weight: 700;
+}
+
+
+/* =========================
+   CATALOGO
+   ========================= */
+
+#catalogoPanel {
+    width: min(1000px, calc(100vw - 32px));
+    max-height: 85vh;
+}
+
+.catalogo > .modalTitulo {
+    margin: 0;
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.catalogo h2 {
+    padding: 0;
+    border: 0;
+}
+
+.aviso {
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.tabla {
+    overflow: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+td {
+    font-size: 12px;
+}
+
+.secundario {
+    background: var(--surface2);
+    color: var(--text);
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.paginacion {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
+.buscador {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+}
+
+.buscador label {
+    flex: 1;
+    margin: 0;
+}
+
+
+/* =========================
+   HISTORIAL
+   ========================= */
+
+#historial {
+    width: min(800px, 95vw);
+    padding: 16px;
+    max-height: 85vh;
+}
+
+.resumen-moneda {
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.resumen-moneda p {
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+
+/* =========================
+   ELEMENTOS AUXILIARES
+   ========================= */
+
+.enlace {
+    padding: 4px 0;
+    background: transparent;
+    color: var(--accent);
+    font-size: 11px;
+    text-decoration: underline;
+}
+
+#referenciaPrecio {
+    padding: 0;
+    font-size: 10px;
+}
+
+#disponibilidadTipo:empty {
+    display: none;
 }
 
 
@@ -496,15 +557,12 @@ input[readonly] {
    ========================= */
 
 @media (max-width: 800px) {
-
     nav {
         display: none;
     }
-
 }
 
 @media (max-width: 650px) {
-
     main {
         margin: 18px 12px;
     }
@@ -512,7 +570,4 @@ input[readonly] {
     .metricas {
         grid-template-columns: 1fr;
     }
-
 }
-
-

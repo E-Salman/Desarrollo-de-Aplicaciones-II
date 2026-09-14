@@ -5,7 +5,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>InversorAR</title>
 
@@ -33,6 +36,7 @@
         <button
             type="button"
             id="abrirModal"
+            disabled
         >
             ＋ Comprar
         </button>
@@ -76,7 +80,10 @@
 
             <div class="usuario-dropdown">
 
-                <a href="#" class="menu-opcion">
+                <a
+                    href="#"
+                    class="menu-opcion"
+                >
                     Configuración
                 </a>
 
@@ -102,9 +109,13 @@
 
     <h1>Mi Portfolio</h1>
 
-    <p class="sub">
-        Resumen del portfolio de demostración
+    <p
+        class="sub"
+        id="origen"
+    >
+        Cargando…
     </p>
+
 
     <section class="metricas">
 
@@ -126,6 +137,9 @@
     </section>
 
 
+    <div id="totalesMoneda"></div>
+
+
     <section class="panel">
 
         <h2>Mis inversiones</h2>
@@ -142,13 +156,173 @@
 </main>
 
 
+<!-- =========================
+     CATALOGO DE INSTRUMENTOS
+     ========================= -->
+
+<dialog
+    id="catalogoPanel"
+    class="panel catalogo"
+    aria-labelledby="tituloCatalogo"
+>
+
+    <div class="modalTitulo">
+
+        <h2 id="tituloCatalogo">
+            Elegí un instrumento
+        </h2>
+
+        <button
+            id="cerrarCatalogo"
+            class="cerrar"
+            aria-label="Cerrar catálogo"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <p class="aviso">
+        Precios históricos de la base compartida.
+        Los instrumentos sin precio o sin moneda identificada
+        se pueden consultar, pero no comprar.
+    </p>
+
+
+    <form
+        id="busquedaCatalogo"
+        class="buscador"
+    >
+
+        <label>
+            Nombre o símbolo
+
+            <input
+                id="buscar"
+                maxlength="80"
+                placeholder="BTCUSDT, Ethereum…"
+            >
+        </label>
+
+        <button class="secundario">
+            Buscar
+        </button>
+
+    </form>
+
+
+    <p
+        id="catalogoError"
+        class="error"
+        role="alert"
+    ></p>
+
+
+    <div class="tabla">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Instrumento</th>
+                    <th>Último cierre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody id="catalogoFilas"></tbody>
+
+        </table>
+
+    </div>
+
+
+    <div class="paginacion">
+
+        <button
+            id="anterior"
+            class="secundario"
+        >
+            Anterior
+        </button>
+
+        <span id="pagina"></span>
+
+        <button
+            id="siguiente"
+            class="secundario"
+        >
+            Siguiente
+        </button>
+
+    </div>
+
+</dialog>
+
+
+<!-- =========================
+     HISTORIAL
+     ========================= -->
+
+<dialog id="historial">
+
+    <div class="modalTitulo">
+
+        <h2 id="tituloHistorial">
+            Historial
+        </h2>
+
+        <button
+            id="cerrarHistorial"
+            class="cerrar"
+            aria-label="Cerrar historial"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <p class="aviso">
+        Hasta 90 registros, del más reciente al más antiguo.
+    </p>
+
+
+    <div class="tabla">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cierre</th>
+                    <th>Volumen</th>
+                </tr>
+            </thead>
+
+            <tbody id="historialFilas"></tbody>
+
+        </table>
+
+    </div>
+
+</dialog>
+
+
+<!-- =========================
+     MODAL COMPRA
+     ========================= -->
+
 <dialog id="modal">
 
     <form id="formCompra">
 
         <div class="modalTitulo">
 
-            <h2>Comprar instrumento</h2>
+            <h2>
+                Comprar instrumento
+            </h2>
 
             <button
                 type="button"
@@ -160,23 +334,84 @@
 
         </div>
 
+
+        <label>
+            Tipo de instrumento
+
+            <select id="tipoInstrumento">
+
+                <option value="">
+                    Todos los tipos
+                </option>
+
+                <option value="ACCION">
+                    Acciones
+                </option>
+
+                <option value="BONO">
+                    Bonos
+                </option>
+
+                <option value="CEDEAR">
+                    CEDEARs
+                </option>
+
+                <option value="CRIPTO">
+                    Criptomonedas
+                </option>
+
+                <option value="MONEDA">
+                    Monedas
+                </option>
+
+            </select>
+
+        </label>
+
+
         <label>
             Instrumento
 
-            <select id="instrumento" required>
+            <select
+                id="instrumento"
+                required
+            >
                 <option value="">
                     Seleccioná un instrumento…
                 </option>
             </select>
+
         </label>
+
+
+        <p
+            id="disponibilidadTipo"
+            class="sub"
+            role="status"
+        ></p>
+
+
+        <button
+            type="button"
+            id="abrirCatalogo"
+            class="enlace"
+            hidden
+        >
+            Consultar precios e historial
+        </button>
 
 
         <div class="dos">
 
             <label>
                 Ticker
-                <input id="ticker" readonly>
+
+                <input
+                    id="ticker"
+                    readonly
+                >
             </label>
+
 
             <label>
                 Cantidad
@@ -184,7 +419,7 @@
                 <input
                     id="cantidad"
                     type="number"
-                    min="0.000001"
+                    min="0.0000000001"
                     step="any"
                     required
                 >
@@ -196,19 +431,21 @@
         <div class="dos">
 
             <label>
-                Precio por unidad (USD)
+                Precio por unidad
+                <span id="monedaCompra"></span>
 
                 <input
                     id="precio"
                     type="number"
-                    min="0.0001"
+                    min="0.0000000001"
                     step="any"
                     required
                 >
             </label>
 
+
             <label>
-                Total invertido (USD)
+                Total invertido
 
                 <input
                     id="total"
@@ -217,6 +454,12 @@
             </label>
 
         </div>
+
+
+        <p
+            id="referenciaPrecio"
+            class="aviso"
+        ></p>
 
 
         <label>
@@ -238,6 +481,7 @@
 
 
         <button
+            id="guardarCompra"
             class="comprar"
             type="submit"
         >

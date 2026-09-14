@@ -1,6 +1,6 @@
 (() => {
-  const ctx = window.APP_CONTEXT, $ = id => document.getElementById(id), modal = $("modal");
-  let instrumentos = [], pagina = 0, busqueda = "", filas = [], moneda = "USD", mysql = false;
+  const ctx = window.APP_CONTEXT, $ = id => document.getElementById(id), modal = $("modal"), modalVenta = $("modalVenta");
+  let instrumentos = [], pagina = 0, busqueda = "", filas = [], moneda = "USD", monedaVenta = "", mysql = false, ultimoResumen = { posiciones: [] };
   const dec = n => Number(n || 0);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const numero = n => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 10 }).format(n);
@@ -14,12 +14,11 @@
     return response.json();
   }
   function actualizarTotal() { $("total").value = money(dec($("cantidad").value) * dec($("precio").value), moneda); }
+  function actualizarTotalVenta() { $("totalVenta").value = money(dec($("cantidadVenta").value) * dec($("precioVenta").value), monedaVenta); }
   function renderResumen(r) {
-    const varias = Object.keys(r.totalesPorMoneda || {}).length > 1;
+    ultimoResumen = r;
     for (const [id, campo] of [["capital", "capitalInvertido"], ["patrimonio", "patrimonioTotal"], ["ganancia", "gananciaTotal"]])
-      $(id).textContent = varias ? "Por moneda ↓" : (r.posiciones.length ? money(r[campo], r.moneda) : "0");
-    $("totalesMoneda").innerHTML = varias ? Object.entries(r.totalesPorMoneda).map(([m,t]) =>
-      '<article class="panel resumen-moneda"><b>' + esc(m) + '</b><p>Invertido: ' + esc(money(t.capitalInvertido,m)) + ' · Patrimonio: ' + esc(money(t.patrimonioTotal,m)) + '</p><p>Ganancia/pérdida: ' + esc(money(t.gananciaTotal,m)) + ' (' + numero(t.rendimientoPorcentaje) + '%)</p></article>').join("") : "";
+      $(id).textContent = money(r[campo], r.moneda);
     $("posiciones").innerHTML = r.posiciones.length ? r.posiciones.map(p =>
       '<article class="posicion"><div><b>' + esc(p.nombre) + '</b><small>' + esc(p.ticker) + ' · ' + esc(p.tipo) +
       '</small><small>Cantidad: ' + numero(p.cantidad) + ' · Promedio: ' + esc(money(p.precioPromedio,p.moneda)) +
@@ -119,12 +118,44 @@
     } catch(e) { $("error").textContent = e.message; }
     finally { boton.disabled = false; }
   };
+
+  function cargarSelectVenta() {
+    $("instrumentoVenta").innerHTML = '<option value="">Seleccioná un instrumento…</option>' +
+      ultimoResumen.posiciones.map(p => '<option value="' + esc(p.ticker) + '">' + esc(p.nombre) + ' (' + esc(p.ticker) + ') — tenés ' + numero(p.cantidad) + '</option>').join("");
+  }
+  $("abrirModalVenta").onclick = () => {
+    cargarSelectVenta(); $("formVenta").reset();
+    const hoy = new Date(); $("fechaVenta").value = new Date(hoy.getTime() - hoy.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    $("fechaVenta").max = $("fechaVenta").value; $("errorVenta").textContent = "";
+    modalVenta.showModal();
+  };
+  $("cerrarModalVenta").onclick = () => modalVenta.close();
+  $("instrumentoVenta").onchange = e => {
+    const p = ultimoResumen.posiciones.find(x => x.ticker === e.target.value);
+    $("tickerVenta").value = p?.ticker || ""; $("cantidadVenta").max = p?.cantidad || "";
+    monedaVenta = p?.moneda || ""; $("monedaVenta").textContent = monedaVenta;
+    $("precioVenta").value = p && dec(p.cantidad) ? (dec(p.actual) / dec(p.cantidad)).toFixed(10) : "";
+    actualizarTotalVenta();
+  };
+  ["cantidadVenta", "precioVenta"].forEach(id => $(id).addEventListener("input", actualizarTotalVenta));
+  $("venderTodo").onclick = () => { const p = ultimoResumen.posiciones.find(x => x.ticker === $("tickerVenta").value); if (!p) return; $("cantidadVenta").value = p.cantidad; actualizarTotalVenta(); };
+  $("formVenta").onsubmit = async e => {
+    e.preventDefault(); const boton = $("guardarVenta"); boton.disabled = true; $("errorVenta").textContent = "";
+    try {
+      const body = await api("/ventas", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker: $("tickerVenta").value, cantidad: $("cantidadVenta").value, precioUnitario: $("precioVenta").value, fecha: $("fechaVenta").value }) });
+      renderResumen(body); modalVenta.close();
+    } catch(e) { $("errorVenta").textContent = e.message; }
+    finally { boton.disabled = false; }
+  };
+
   async function iniciar() {
     mysql = (await api("/catalogo/configuracion")).mysql;
     $("origen").textContent = mysql ? "Valuación según el último cierre histórico disponible; no son precios en vivo." : "Portfolio de demostración";
     await Promise.all([cargarInstrumentos(), api("/portfolio/resumen").then(renderResumen)]);
     $("abrirCatalogo").hidden = !mysql;
     $("abrirModal").disabled = false;
+    $("abrirModalVenta").disabled = false;
   }
   iniciar().catch(e => { $("posiciones").textContent = e.message; });
 })();
