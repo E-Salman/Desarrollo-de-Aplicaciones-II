@@ -17,11 +17,8 @@
   function actualizarTotalVenta() { $("totalVenta").value = money(dec($("cantidadVenta").value) * dec($("precioVenta").value), monedaVenta); }
   function renderResumen(r) {
     ultimoResumen = r;
-    const varias = Object.keys(r.totalesPorMoneda || {}).length > 1;
     for (const [id, campo] of [["capital", "capitalInvertido"], ["patrimonio", "patrimonioTotal"], ["ganancia", "gananciaTotal"]])
-      $(id).textContent = varias ? "Por moneda ↓" : (r.posiciones.length ? money(r[campo], r.moneda) : "0");
-    $("totalesMoneda").innerHTML = varias ? Object.entries(r.totalesPorMoneda).map(([m,t]) =>
-      '<article class="panel resumen-moneda"><b>' + esc(m) + '</b><p>Invertido: ' + esc(money(t.capitalInvertido,m)) + ' · Patrimonio: ' + esc(money(t.patrimonioTotal,m)) + '</p><p>Ganancia/pérdida: ' + esc(money(t.gananciaTotal,m)) + ' (' + numero(t.rendimientoPorcentaje) + '%)</p></article>').join("") : "";
+      $(id).textContent = money(r[campo], r.moneda);
     $("posiciones").innerHTML = r.posiciones.length ? r.posiciones.map(p =>
       '<article class="posicion"><div><b>' + esc(p.nombre) + '</b><small>' + esc(p.ticker) + ' · ' + esc(p.tipo) +
       '</small><small>Cantidad: ' + numero(p.cantidad) + ' · Promedio: ' + esc(money(p.precioPromedio,p.moneda)) +
@@ -137,7 +134,7 @@
     const p = ultimoResumen.posiciones.find(x => x.ticker === e.target.value);
     $("tickerVenta").value = p?.ticker || ""; $("cantidadVenta").max = p?.cantidad || "";
     monedaVenta = p?.moneda || ""; $("monedaVenta").textContent = monedaVenta;
-    $("precioVenta").value = p ? dec(p.actual) / dec(p.cantidad) : "";
+    $("precioVenta").value = p && dec(p.cantidad) ? (dec(p.actual) / dec(p.cantidad)).toFixed(10) : "";
     actualizarTotalVenta();
   };
   ["cantidadVenta", "precioVenta"].forEach(id => $(id).addEventListener("input", actualizarTotalVenta));

@@ -23,6 +23,9 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
     @Inject private PortfolioActual portfolioActual;
     @Inject private OperacionRepository operaciones;
     @Inject private CotizacionStrategy cotizaciones;
+    @Inject private ConfiguracionApp configuracion;
+    @Inject private CatalogoMercadoRepository catalogo;
+    private static final Set<String> MONEDAS_USD = Set.of("USD", "USDT", "USDC", "BUSD", "DAI", "TUSD", "USDP");
     @PostConstruct public void iniciar() { LOG.info("Portfolio inicializado " + conversacion); }
     @PreDestroy public void destruir() { LOG.info("Portfolio destruido " + conversacion); }
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
@@ -67,19 +70,23 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
         Map<String, List<Operacion>> porTicker = new TreeMap<>();
         for (Operacion o : movimientos) porTicker.computeIfAbsent(o.getInstrumento().getTicker(), k -> new ArrayList<>()).add(o);
         List<PosicionDto> posiciones = new ArrayList<>();
-        BigDecimal gananciaRealizada = BigDecimal.ZERO;
+        Map<String, TotalesMonedaDto> totalesPorMoneda = new TreeMap<>();
+        BigDecimal capitalInvertidoUsd = BigDecimal.ZERO, patrimonioTotalUsd = BigDecimal.ZERO, gananciaRealizadaUsd = BigDecimal.ZERO;
         for (List<Operacion> grupo : porTicker.values()) {
             grupo.sort(POR_FECHA_Y_CARGA);
             Instrumento i = grupo.get(0).getInstrumento();
-            String moneda = i.getMonedaCotizacion();
-            BigDecimal cantidad = BigDecimal.ZERO, invertido = BigDecimal.ZERO;
+            BigDecimal precioActual = cotizaciones.cotizar(i);
+            String monedaNativa = i.getMonedaCotizacion();
+            String fechaCotizacion = i.getFechaCotizacion();
+            BigDecimal tasaUsd = tasaAUsd(monedaNativa);
+            BigDecimal cantidad = BigDecimal.ZERO, invertido = BigDecimal.ZERO, gananciaRealizadaTicker = BigDecimal.ZERO;
             for (Operacion o : grupo) {
-                if (o.getOrdenDetalle() != null && !moneda.equals(o.getOrdenDetalle().getOrden().getMoneda()))
+                if (o.getOrdenDetalle() != null && !monedaNativa.equals(o.getOrdenDetalle().getOrden().getMoneda()))
                     throw new ReglaNegocioException("La moneda de cotización no coincide con la moneda de la orden registrada.");
                 if (o.getTipo() == TipoOperacion.VENTA) {
                     BigDecimal promedioVigente = cantidad.signum() > 0 ? invertido.divide(cantidad, 10, RoundingMode.HALF_UP) : BigDecimal.ZERO;
                     BigDecimal costoVendido = o.getCantidad().multiply(promedioVigente);
-                    gananciaRealizada = gananciaRealizada.add(o.getTotal().subtract(costoVendido));
+                    gananciaRealizadaTicker = gananciaRealizadaTicker.add(o.getTotal().subtract(costoVendido));
                     invertido = invertido.subtract(costoVendido);
                     cantidad = cantidad.subtract(o.getCantidad());
                 } else {
@@ -87,44 +94,51 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
                     invertido = invertido.add(o.getTotal());
                 }
             }
+            if (tasaUsd != null) gananciaRealizadaUsd = gananciaRealizadaUsd.add(gananciaRealizadaTicker.multiply(tasaUsd));
             if (cantidad.signum() <= 0) continue;
             PosicionDto p = new PosicionDto();
             p.ticker = i.getTicker(); p.nombre = i.getNombre(); p.tipo = i.getTipo().name();
-            p.moneda = moneda; p.fechaCotizacion = i.getFechaCotizacion();
-            p.cantidad = cantidad; p.invertido = invertido; p.precioActual = cotizaciones.cotizar(i);
+            p.moneda = monedaNativa; p.fechaCotizacion = fechaCotizacion;
+            p.cantidad = cantidad; p.invertido = invertido; p.precioActual = precioActual;
             p.precioPromedio = p.invertido.divide(p.cantidad, 10, RoundingMode.HALF_UP);
             p.actual = p.cantidad.multiply(p.precioActual).setScale(10, RoundingMode.HALF_UP);
             p.rendimiento = p.actual.subtract(p.invertido);
             p.rendimientoPorcentaje = porcentaje(p.rendimiento, p.invertido);
             posiciones.add(p);
+            TotalesMonedaDto total = totalesPorMoneda.computeIfAbsent(monedaNativa, m -> new TotalesMonedaDto());
+            total.capitalInvertido = total.capitalInvertido.add(p.invertido);
+            total.patrimonioTotal = total.patrimonioTotal.add(p.actual);
+            if (tasaUsd != null) {
+                capitalInvertidoUsd = capitalInvertidoUsd.add(p.invertido.multiply(tasaUsd));
+                patrimonioTotalUsd = patrimonioTotalUsd.add(p.actual.multiply(tasaUsd));
+            }
         }
         posiciones.sort(Comparator.comparing(p -> p.nombre));
         ResumenPortfolioDto r = new ResumenPortfolioDto();
         r.posiciones = posiciones;
-        BigDecimal capitalInvertido = BigDecimal.ZERO, patrimonioTotal = BigDecimal.ZERO;
-        for (PosicionDto p : posiciones) {
-            capitalInvertido = capitalInvertido.add(p.invertido);
-            patrimonioTotal = patrimonioTotal.add(p.actual);
-            TotalesMonedaDto total = r.totalesPorMoneda.computeIfAbsent(p.moneda, m -> new TotalesMonedaDto());
-            total.capitalInvertido = total.capitalInvertido.add(p.invertido);
-            total.patrimonioTotal = total.patrimonioTotal.add(p.actual);
-        }
-        r.capitalInvertido = capitalInvertido; r.patrimonioTotal = patrimonioTotal;
-        r.gananciaRealizada = gananciaRealizada;
-        r.gananciaTotal = patrimonioTotal.subtract(capitalInvertido).add(gananciaRealizada);
-        r.rendimientoPorcentaje = porcentaje(r.gananciaTotal, r.capitalInvertido);
-        r.totalesPorMoneda.forEach((moneda, total) -> {
+        r.totalesPorMoneda = totalesPorMoneda;
+        totalesPorMoneda.forEach((moneda, total) -> {
             total.gananciaTotal = total.patrimonioTotal.subtract(total.capitalInvertido);
             total.rendimientoPorcentaje = porcentaje(total.gananciaTotal, total.capitalInvertido);
         });
-        if (r.totalesPorMoneda.size() == 1) r.moneda = r.totalesPorMoneda.keySet().iterator().next();
-        if (r.totalesPorMoneda.size() > 1) {
-            r.moneda = null; r.capitalInvertido = null; r.patrimonioTotal = null;
-            r.gananciaTotal = null; r.rendimientoPorcentaje = null;
-        }
+        // Todo lo que se pudo convertir queda sumado en USD; una moneda sin camino de conversión
+        // no rompe el resumen, sólo queda afuera de estos totales (pero sigue visible en "posiciones").
+        r.moneda = "USD";
+        r.capitalInvertido = capitalInvertidoUsd.setScale(10, RoundingMode.HALF_UP);
+        r.patrimonioTotal = patrimonioTotalUsd.setScale(10, RoundingMode.HALF_UP);
+        r.gananciaRealizada = gananciaRealizadaUsd.setScale(10, RoundingMode.HALF_UP);
+        r.gananciaTotal = r.patrimonioTotal.subtract(r.capitalInvertido).add(r.gananciaRealizada);
+        r.rendimientoPorcentaje = porcentaje(r.gananciaTotal, r.capitalInvertido);
         return r;
     }
     private BigDecimal porcentaje(BigDecimal ganancia, BigDecimal costo) {
         return costo.signum() == 0 ? BigDecimal.ZERO : ganancia.multiply(BigDecimal.valueOf(100)).divide(costo, 4, RoundingMode.HALF_UP);
+    }
+    // Los stablecoins valen ~1 USD directo; el resto se convierte saltando por los pares del catálogo MySQL
+    // (ver CatalogoMercadoRepository.tasaAUsd). Sin catálogo MySQL (demo H2, o tests) sólo se reconocen los stablecoins.
+    private BigDecimal tasaAUsd(String moneda) {
+        if (MONEDAS_USD.contains(moneda)) return BigDecimal.ONE;
+        if (configuracion == null || !configuracion.catalogoMysql() || catalogo == null) return null;
+        return catalogo.tasaAUsd(moneda);
     }
 }
