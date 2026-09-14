@@ -1,0 +1,6 @@
+# Ejecutar con jboss-cli contra el servidor elegido, luego de instalar driver y credential-store.
+# Propiedades del SERVIDOR: inversorar.jdbc.url e inversorar.jdbc.user.
+# Sustituir SOLO los nombres locales de driver, store y alias si el equipo usa otros.
+# No contiene contraseña y no crea/elimina tablas.
+/subsystem=datasources/data-source=InversorARDS:add(jndi-name=java:jboss/datasources/InversorARDS,driver-name=mysql,connection-url="${inversorar.jdbc.url}",user-name="${inversorar.jdbc.user}",credential-reference={store=inversorarCredentials,alias=mysql-password},jta=true,enabled=true)
+/subsystem=datasources/data-source=InversorARDS:test-connection-in-pool

@@ -9,10 +9,11 @@ import java.math.BigDecimal;
 
 @Singleton @Startup
 public class DatosIniciales {
-    @Inject private PortfolioRepository portfolios;
+    @Inject private ConfiguracionApp configuracion;
     @Inject private InstrumentoRepository instrumentos;
     @PostConstruct public void cargar() {
-        if (portfolios.buscar(1L) == null) portfolios.guardar(new Portfolio("Mi Portfolio"));
+        if (configuracion.catalogoMysql()) return;
+
         if (!instrumentos.listar().isEmpty()) return;
         alta("Apple", "AAPL", TipoInstrumento.ACCION, "195"); alta("Microsoft", "MSFT", TipoInstrumento.ACCION, "420"); alta("Alphabet", "GOOGL", TipoInstrumento.ACCION, "175"); alta("Amazon", "AMZN", TipoInstrumento.ACCION, "185"); alta("Tesla", "TSLA", TipoInstrumento.ACCION, "250"); alta("Nvidia", "NVDA", TipoInstrumento.ACCION, "498"); alta("Meta", "META", TipoInstrumento.ACCION, "520");
         alta("Bitcoin", "BTC", TipoInstrumento.CRIPTO, "67200"); alta("Ethereum", "ETH", TipoInstrumento.CRIPTO, "3100"); alta("Solana", "SOL", TipoInstrumento.CRIPTO, "145"); alta("BNB", "BNB", TipoInstrumento.CRIPTO, "580"); alta("Cardano", "ADA", TipoInstrumento.CRIPTO, "0.45"); alta("XRP", "XRP", TipoInstrumento.CRIPTO, "0.55"); alta("Dogecoin", "DOGE", TipoInstrumento.CRIPTO, "0.12");

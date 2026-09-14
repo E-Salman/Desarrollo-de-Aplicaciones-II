@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 
 /** Posición consolidada, calculada a partir de las operaciones. */
 public class PosicionDto {
+    public String moneda;
+    public String fechaCotizacion;
+    public BigDecimal precioActual; public BigDecimal rendimientoPorcentaje;
     public String nombre; public String ticker; public String tipo;
     public BigDecimal cantidad; public BigDecimal precioPromedio; public BigDecimal invertido; public BigDecimal actual; public BigDecimal rendimiento;
 }

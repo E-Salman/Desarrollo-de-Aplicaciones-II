@@ -1,0 +1,67 @@
+"""Prueba del WAR sobre una base de demo VACÍA. Crea dos compras de prueba.
+Requiere ana/bruno con USUARIO y lector con LECTOR; contraseñas por entorno.
+Usar solo en una instalación aislada. No reinicia ni borra ninguna base.
+"""
+import urllib.request,urllib.error,http.cookiejar,base64,json,datetime,os
+from pathlib import Path
+creds={u:os.environ['SMOKE_'+u.upper()+'_PASSWORD'] for u in ['ana','bruno','lector']}
+base=os.environ.get('SMOKE_BASE_URL','http://127.0.0.1:8080/inversorar')
+def client(): return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+ana,bruno=client(),client()
+checks=[]
+def call(opener,method,path,user=None,body=None,expected=200):
+ headers={}
+ if user: headers['Authorization']='Basic '+base64.b64encode((user+':'+creds[user]).encode()).decode()
+ if body is not None: headers['Content-Type']='application/json'
+ req=urllib.request.Request(base+path,data=json.dumps(body).encode() if body is not None else None,headers=headers,method=method)
+ try:
+  with opener.open(req,timeout=20) as r: status,data=r.status,r.read()
+ except urllib.error.HTTPError as r: status,data=r.code,r.read()
+ assert status==expected,(method,path,status,data[:1200])
+ checks.append(f'{method} {path}: {status} ({user or "anonimo"})')
+ return json.loads(data) if data and data.lstrip().startswith((b'{',b'[')) else data
+call(client(),'GET','/api/portfolio/resumen',expected=401)
+call(client(),'POST','/api/compras','lector',{},403)
+call(ana,'GET','/dashboard','ana')
+r=call(ana,'GET','/api/portfolio/resumen','ana'); assert r['capitalInvertido']==0
+call(ana,'POST','/api/compras','ana',{'ticker':'AAPL','cantidad':-1,'precioUnitario':180,'fecha':str(datetime.date.today())},400)
+r=call(ana,'POST','/api/compras','ana',{'ticker':'AAPL','cantidad':10,'precioUnitario':180,'fecha':str(datetime.date.today())},201)
+assert r['capitalInvertido']==1800 and r['patrimonioTotal']==1950 and r['gananciaTotal']==150,r
+assert call(bruno,'GET','/api/portfolio/resumen','bruno')['capitalInvertido']==0
+p=call(ana,'GET','/api/portfolio/posiciones','ana')[0]; assert p['precioPromedio']==180 and abs(p['rendimientoPorcentaje']-8.3333)<.00001
+call(ana,'GET','/api/portfolios/1/resumen','ana',expected=404)
+call(ana,'PUT','/api/portfolio/simulacion/capital','ana',{'valor':1000000})
+r=call(ana,'PUT','/api/portfolio/simulacion/porcentajes/ACCION','ana',{'valor':40}); assert r['importes']['ACCION']==400000
+call(ana,'PUT','/api/portfolio/simulacion/porcentajes/BONO','ana',{'valor':70},400)
+# El alias anterior y las rutas de Portfolio comparten una sola conversación.
+assert call(ana,'GET','/api/simulador','ana')['importes']['ACCION']==400000
+assert call(bruno,'GET','/api/portfolio/simulacion','bruno')['capital']==0
+call(ana,'GET','/api/simulador','bruno',expected=403)
+call(ana,'GET','/api/portfolio/resumen','bruno',expected=403)
+call(ana,'POST','/api/compras','bruno',{'ticker':'AAPL','cantidad':1,'precioUnitario':180,'fecha':str(datetime.date.today())},403)
+call(ana,'DELETE','/api/portfolio/sesion','bruno',expected=403)
+assert call(bruno,'GET','/api/portfolio/resumen','bruno')['capitalInvertido']==0
+# Nueva compra en la misma sesión: las posiciones se refrescan y el plan permanece.
+r=call(ana,'POST','/api/compras','ana',{'ticker':'AAPL','cantidad':5,'precioUnitario':210,'fecha':str(datetime.date.today())},201)
+assert r['capitalInvertido']==2850 and r['gananciaTotal']==75,r
+assert call(ana,'GET','/api/portfolio/resumen','ana')['posiciones'][0]['precioPromedio']==190
+assert call(ana,'GET','/api/portfolio/simulacion','ana')['capital']==1000000
+# Otra sesión de la misma cuenta ve inversiones actuales, pero no comparte la simulación.
+otra=client()
+assert call(otra,'GET','/api/portfolio/resumen','ana')['capitalInvertido']==2850
+assert call(otra,'GET','/api/portfolio/simulacion','ana')['capital']==0
+call(ana,'DELETE','/api/portfolio/simulacion','ana',expected=204)
+assert call(ana,'GET','/api/simulador','ana')['capital']==0
+assert call(ana,'GET','/api/portfolio/resumen','ana')['capitalInvertido']==2850
+call(ana,'PUT','/api/simulador/capital','ana',{'valor':500})
+assert call(ana,'GET','/api/portfolio/simulacion','ana')['capital']==500
+call(ana,'DELETE','/api/simulador','ana',expected=204)
+call(ana,'PUT','/api/portfolio/simulacion/capital','ana',{'valor':700})
+call(ana,'DELETE','/api/portfolio/sesion','ana',expected=204)
+assert call(ana,'GET','/api/portfolio/simulacion','ana')['capital']==0
+assert call(ana,'GET','/api/portfolio/resumen','ana')['capitalInvertido']==2850
+call(ana,'DELETE','/api/portfolio/sesion','ana',expected=204)
+call(bruno,'DELETE','/api/portfolio/sesion','bruno',expected=204)
+call(otra,'DELETE','/api/portfolio/sesion','ana',expected=204)
+print('Todas las aserciones correctas.')
+print('\n'.join(checks))
