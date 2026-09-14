@@ -41,8 +41,8 @@
             ＋ Comprar
         </button>
 
-        <button type="button" id="abrirModalVenta" class="secundario" disabled>
-            Vender
+        <button type="button" id="abrirModalVenta" disabled>
+            − Vender
         </button>
 
         <details class="usuario-menu">
@@ -421,7 +421,7 @@
                 <input
                     id="cantidad"
                     type="number"
-                    min="0.0000000001"
+                    min="0"
                     step="any"
                     required
                 >
@@ -439,7 +439,7 @@
                 <input
                     id="precio"
                     type="number"
-                    min="0.0000000001"
+                    min="0"
                     step="any"
                     required
                 >
@@ -509,14 +509,13 @@
         </label>
         <div class="dos">
             <label>Ticker <input id="tickerVenta" readonly></label>
-            <label>Cantidad
-                <input id="cantidadVenta" type="number" min="0.0000000001" step="any" required>
+            <label>Cantidad <button type="button" id="venderTodo" class="enlace">Vender todo</button>
+                <input id="cantidadVenta" type="number" min="0" step="any" required>
             </label>
         </div>
-        <button type="button" id="venderTodo" class="secundario">Vender toda la posición</button>
         <div class="dos">
             <label>Precio por unidad <span id="monedaVenta"></span>
-                <input id="precioVenta" type="number" min="0.0000000001" step="any" required>
+                <input id="precioVenta" type="number" min="0" step="any" required>
             </label>
             <label>Total de la venta <input id="totalVenta" readonly></label>
         </div>

@@ -90,7 +90,8 @@ nav {
    BOTON COMPRAR
    ========================= */
 
-#abrirModal {
+#abrirModal,
+#abrirModalVenta {
     position: static;
     display: inline-flex;
     align-items: center;
@@ -107,7 +108,8 @@ nav {
     white-space: nowrap;
 }
 
-#abrirModal:hover {
+#abrirModal:hover,
+#abrirModalVenta:hover {
     filter: brightness(0.95);
 }
 
@@ -545,6 +547,10 @@ button:disabled {
 #referenciaPrecio {
     padding: 0;
     font-size: 10px;
+}
+
+#venderTodo {
+    float: right;
 }
 
 #disponibilidadTipo:empty {
