@@ -26,12 +26,14 @@ class ComponentesTest {
         igual("2850", r.capitalInvertido); igual("2925", r.patrimonioTotal); igual("75", r.gananciaTotal);
         var p = r.posiciones.get(0); igual("190", p.precioPromedio); igual("15", p.cantidad); igual("2.6316", p.rendimientoPorcentaje);
     }
-    @Test void noSumaMonedasDistintas() throws Exception {
+    @Test void monedasSinConversionQuedanAfueraDelTotalUsdPeroNoRompenElResumen() throws Exception {
         var eth = new Instrumento("ETH/BTC", "ETHBTC", TipoInstrumento.CRIPTO, n("0.03"));
         eth.actualizarCotizacion(n("0.03"), "BTC", "2026-08-31 00:00:00");
         var movimiento = new Operacion(cartera, eth, n("2"), n("0.02"), LocalDate.now());
         var r = portfolio().consolidar(List.of(compra("1", "180"), movimiento));
-        assertNull(r.capitalInvertido); assertNull(r.patrimonioTotal); assertNull(r.moneda);
+        // Sin catálogo MySQL inyectado no hay forma de convertir BTC; sólo USD (directo) entra al total.
+        assertEquals("USD", r.moneda);
+        igual("180", r.capitalInvertido); igual("195", r.patrimonioTotal); igual("15", r.gananciaTotal);
         igual("180", r.totalesPorMoneda.get("USD").capitalInvertido);
         igual("0.04", r.totalesPorMoneda.get("BTC").capitalInvertido);
         igual("0.02", r.totalesPorMoneda.get("BTC").gananciaTotal);
@@ -40,8 +42,21 @@ class ComponentesTest {
         var eth = new Instrumento("ETH/BTC", "ETHBTC", TipoInstrumento.CRIPTO, n("0.0000001234"));
         eth.actualizarCotizacion(n("0.0000001234"), "BTC", "2026-08-31 00:00:00");
         var r = portfolio().consolidar(List.of(new Operacion(cartera, eth, n("2"), n("0.0000001001"), LocalDate.now())));
-        igual("0.0000002002", r.capitalInvertido); igual("0.0000002468", r.patrimonioTotal);
-        igual("0.0000001001", r.posiciones.get(0).precioPromedio); assertEquals("BTC", r.moneda);
+        igual("0.0000002002", r.totalesPorMoneda.get("BTC").capitalInvertido);
+        igual("0.0000002468", r.totalesPorMoneda.get("BTC").patrimonioTotal);
+        igual("0.0000001001", r.posiciones.get(0).precioPromedio); assertEquals("BTC", r.posiciones.get(0).moneda);
+    }
+    @Test void convierteMonedaSinStablecoinSaltandoPorElCatalogo() throws Exception {
+        var eth = new Instrumento("Cripto rara", "ETHXYZ", TipoInstrumento.CRIPTO, n("2"));
+        eth.actualizarCotizacion(n("2"), "XYZ", "2026-08-31 00:00:00");
+        var movimiento = new Operacion(cartera, eth, n("3"), n("1"), LocalDate.now());
+        var bean = portfolio();
+        var config = mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
+        var catalogoMercado = mock(CatalogoMercadoRepository.class); when(catalogoMercado.tasaAUsd("XYZ")).thenReturn(n("5"));
+        inyectar(bean, "configuracion", config); inyectar(bean, "catalogo", catalogoMercado);
+        var r = bean.consolidar(List.of(movimiento));
+        assertEquals("USD", r.moneda);
+        igual("15", r.capitalInvertido); igual("30", r.patrimonioTotal);
     }
     @Test void compraSinMonedaNoPersiste() throws Exception {
         var repo = mock(OperacionRepository.class); var bean = compraBean(repo);

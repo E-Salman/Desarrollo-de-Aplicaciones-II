@@ -2,6 +2,7 @@ package ar.edu.uade.inversorar.data;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 @Entity
@@ -18,14 +19,17 @@ public class Operacion {
     @OneToOne @JoinColumn(name = "orden_detalle_id", unique = true) private OrdenDetalle ordenDetalle;
     protected Operacion() { }
     public Operacion(Portfolio portfolio, Instrumento instrumento, BigDecimal cantidad, BigDecimal precioUnitario, LocalDate fecha) {
-        this.portfolio = portfolio; this.instrumento = instrumento; this.tipo = TipoOperacion.COMPRA;
-        this.cantidad = cantidad; this.precioUnitario = precioUnitario; this.total = cantidad.multiply(precioUnitario).setScale(10, java.math.RoundingMode.HALF_UP); this.fecha = fecha;
+        this(portfolio, instrumento, TipoOperacion.COMPRA, cantidad, precioUnitario, fecha);
     }
-    public TipoOperacion getTipo() { return tipo; }
+    public Operacion(Portfolio portfolio, Instrumento instrumento, TipoOperacion tipo, BigDecimal cantidad, BigDecimal precioUnitario, LocalDate fecha) {
+        this.portfolio = portfolio; this.instrumento = instrumento; this.tipo = tipo;
+        this.cantidad = cantidad; this.precioUnitario = precioUnitario; this.total = cantidad.multiply(precioUnitario).setScale(10, RoundingMode.HALF_UP); this.fecha = fecha;
+    }
     public OrdenDetalle getOrdenDetalle() { return ordenDetalle; }
     public void vincularOrden(OrdenDetalle detalle) { this.ordenDetalle = detalle; }
     public Long getId() { return id; } public Portfolio getPortfolio() { return portfolio; }
-    public Instrumento getInstrumento() { return instrumento; } public BigDecimal getCantidad() { return cantidad; }
+    public Instrumento getInstrumento() { return instrumento; } public TipoOperacion getTipo() { return tipo; }
+    public BigDecimal getCantidad() { return cantidad; }
     public BigDecimal getPrecioUnitario() { return precioUnitario; } public BigDecimal getTotal() { return total; }
     public LocalDate getFecha() { return fecha; }
 }
