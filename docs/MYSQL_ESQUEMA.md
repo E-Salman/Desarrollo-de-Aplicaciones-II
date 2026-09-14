@@ -1,5 +1,10 @@
 # Esquema MySQL utilizado por el equipo
 
+**Actualización de autenticación:** el registro ahora guarda PBKDF2 real en
+`usuarios.password` y vincula automáticamente `portfolios.usuario_id` al resolver
+la cartera. Las notas históricas de login externo/marcadores más abajo describen
+el estado anterior; ver [autenticación vigente](AUTENTICACION.md).
+
 Estado verificado en `mysql_componente`, 13/09/2026. Son **11 tablas**. La definición SQL exacta, sin datos ni credenciales, está en [config/mysql-esquema.sql](../config/mysql-esquema.sql). Este documento se generó a partir de la estructura real de la base local y explica los acuerdos que debe conservar cada componente.
 
 ## Cómo registrar una compra

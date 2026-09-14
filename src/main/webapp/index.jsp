@@ -1,1 +1,3 @@
-<% response.sendRedirect(request.getContextPath() + "/dashboard"); %>
+<%
+    response.sendRedirect(request.getContextPath() + "/dashboard");
+%>

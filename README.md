@@ -12,12 +12,13 @@ Componentes Jakarta EE 10 implementados en capas: **Compra** y **Venta** (EJB `@
 - [Integración con Login, BD y otras ramas](docs/INTEGRACION.md)
 - [Esquema MySQL completo](docs/MYSQL_ESQUEMA.md) y [configuración/pruebas MySQL](docs/MYSQL.md)
 - [Pruebas y demo](docs/PRUEBAS.md)
+- [Registro, login y configuración de seguridad vigente](docs/AUTENTICACION.md)
 
 ## Arquitectura
 
 `JSP/Servlet + JAX-RS` → `CompraService` / `VentaService` (`@Stateless`, registran operaciones) y `PortfolioService` (`@Stateful` por sesión HTTP vía `PortfolioSesion`, Service Facade que consolida con `CotizacionStrategy`) → `Repositories JPA` → `H2 ExampleDS` / `MySQL`.
 
-La pantalla se abre en `/inversorar/dashboard`. Todas las rutas siguientes llevan prefijo `/inversorar/api` y requieren rol `USUARIO` (BASIC auth):
+La pantalla se abre en `/inversorar/dashboard`. Todas las rutas siguientes llevan prefijo `/inversorar/api` y requieren rol `USUARIO` y la sesión del login de la aplicación:
 
 | Método y ruta | Resultado |
 |---|---|
@@ -74,7 +75,7 @@ mvn -Pdemo-init package
 Copy-Item target/inversorar.war "$env:WILDFLY_HOME/standalone/deployments/"
 ```
 
-Antes de entrar, ejecutar `bin/add-user.bat` de WildFly de forma interactiva: elegir **Application User**, realm `ApplicationRealm`, elegir usuario/contraseña y asignar grupo **USUARIO**. Abrir `/inversorar/dashboard` y autenticarse en el diálogo del navegador. No se agregaron pantallas de login ni contraseñas al repositorio. Se requiere HTTPS fuera de localhost.
+Antes de desplegar, ejecutar `bin/jboss-cli.bat --connect --file=config/wildfly-security.cli` desde el repositorio. Luego abrir `/inversorar/registro` y crear una cuenta; `/dashboard` lleva al formulario de login. El principal y el rol `USUARIO` se establecen mediante Jakarta Security contra la BD. Ver [configuración y migración](docs/AUTENTICACION.md). Se requiere HTTPS fuera de localhost.
 
 El perfil `demo-init` usa `create`, solo para una BD vacía. No es una migración ni debe desplegarse sobre datos del equipo. H2 ExampleDS es una demostración en memoria; MySQL se prepara mediante `mvn -Pmysql package` y un datasource externo. Ver [integración y BD](docs/INTEGRACION.md).
 

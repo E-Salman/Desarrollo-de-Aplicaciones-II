@@ -1,0 +1,323 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --bg: #0a0b0e;
+    --surface: #111318;
+    --surface2: #1a1d24;
+    --border: #22262f;
+    --accent: #00e87a;
+    --text: #f4f7fb;
+    --muted: #8490a3;
+    --danger: #ff6b75;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+
+    background: var(--bg);
+    color: var(--text);
+
+    font: 14px Inter, Arial, sans-serif;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+/* ==============================
+   CONTENEDOR
+   ============================== */
+
+.auth-container {
+    width: 100%;
+    max-width: 346px;
+}
+
+
+/* ==============================
+   LOGO
+   ============================== */
+
+.brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 36px;
+
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.brand-icon {
+    display: grid;
+    place-items: center;
+
+    width: 36px;
+    height: 36px;
+
+    background: #063d27;
+    color: var(--accent);
+
+    border-radius: 8px;
+
+    font-size: 18px;
+}
+
+
+/* ==============================
+   TABS
+   ============================== */
+
+.tabs {
+    width: 100%;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    padding: 4px;
+
+    margin-bottom: 20px;
+
+    background: var(--surface);
+
+    border-radius: 8px;
+}
+
+.tab {
+    border: 0;
+    border-radius: 6px;
+
+    padding: 10px;
+
+    background: transparent;
+    color: var(--muted);
+
+    font: 500 13px Inter, Arial, sans-serif;
+
+    cursor: pointer;
+}
+
+.tab.active {
+    background: var(--accent);
+    color: #001c0e;
+}
+
+
+/* ==============================
+   FORMULARIOS
+   ============================== */
+
+form {
+    width: 100%;
+    padding: 0;
+}
+
+label {
+    display: block;
+
+    margin: 11px 0 0;
+
+    color: var(--muted);
+
+    font-size: 11px;
+}
+
+input {
+    display: block;
+
+    width: 100%;
+    height: 41px;
+
+    margin-top: 7px;
+
+    padding: 0 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    outline: none;
+
+    background: var(--surface2);
+    color: var(--text);
+
+    font: 13px Inter, Arial, sans-serif;
+}
+
+input::placeholder {
+    color: #7d8798;
+}
+
+input:focus {
+    border-color: var(--accent);
+}
+
+
+/* ==============================
+   CONTRASEÑA
+   ============================== */
+
+.password-container {
+    position: relative;
+}
+
+.password-container input {
+    padding-right: 45px;
+}
+
+.show-password {
+    position: absolute;
+
+    right: 10px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    border: none;
+
+    background: transparent;
+    color: var(--muted);
+
+    font-size: 16px;
+
+    cursor: pointer;
+
+    padding: 5px;
+}
+
+.show-password:hover {
+    opacity: 0.8;
+}
+
+
+/* ==============================
+   OLVIDÉ CONTRASEÑA
+   ============================== */
+
+.forgot-container {
+    margin-top: 10px;
+
+    text-align: right;
+}
+
+.forgot-container a {
+    color: #8195b8;
+
+    font-size: 11px;
+
+    text-decoration: none;
+}
+
+.forgot-container a:hover {
+    color: var(--accent);
+}
+
+
+/* ==============================
+   BOTÓN PRINCIPAL
+   ============================== */
+
+.main-button {
+    width: 100%;
+    height: 39px;
+
+    margin-top: 28px;
+
+    padding: 0;
+
+    border: 0;
+    border-radius: 6px;
+
+    background: var(--accent);
+    color: #001c0e;
+
+    font: 700 13px Inter, Arial, sans-serif;
+
+    cursor: pointer;
+}
+
+.main-button:hover {
+    filter: brightness(.95);
+}
+
+
+/* ==============================
+   RECUPERAR CONTRASEÑA
+   ============================== */
+
+.recovery-header {
+    width: 100%;
+
+    margin-bottom: 21px;
+}
+
+.recovery-header h1 {
+    margin: 0 0 7px;
+
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.recovery-header p {
+    margin: 0;
+
+    color: #8195b8;
+
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.back-login {
+    margin-top: 18px;
+
+    text-align: center;
+}
+
+.back-login a {
+    color: #8195b8;
+
+    font-size: 11px;
+
+    text-decoration: none;
+}
+
+.back-login a:hover {
+    color: var(--accent);
+}
+
+
+/* ==============================
+   ERROR
+   ============================== */
+
+.error {
+    min-height: 16px;
+
+    margin-top: 8px;
+
+    color: var(--danger);
+
+    font-size: 11px;
+}
+
+
+/* ==============================
+   CELULAR
+   ============================== */
+
+@media (max-width: 450px) {
+
+    .auth-container {
+        width: calc(100vw - 32px);
+    }
+
+}

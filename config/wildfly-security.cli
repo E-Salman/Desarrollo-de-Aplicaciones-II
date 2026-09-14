@@ -1,0 +1,10 @@
+# Ejecutar una vez antes de desplegar el WAR. No modifica ApplicationRealm ni sus usuarios.
+if (outcome != success) of /subsystem=undertow/application-security-domain=InversorAR:read-resource
+    /subsystem=undertow/application-security-domain=InversorAR:add(security-domain=ApplicationDomain,integrated-jaspi=false)
+else
+    /subsystem=undertow/application-security-domain=InversorAR:write-attribute(name=integrated-jaspi,value=false)
+end-if
+if (outcome != success) of /subsystem=ejb3/application-security-domain=InversorAR:read-resource
+    /subsystem=ejb3/application-security-domain=InversorAR:add(security-domain=ApplicationDomain)
+end-if
+reload

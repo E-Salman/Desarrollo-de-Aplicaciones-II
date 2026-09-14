@@ -1,5 +1,8 @@
 # Pruebas y demo reproducible
 
+Para el registro/login actual usar [AUTENTICACION.md](AUTENTICACION.md) y
+`scripts/smoke_auth.mjs`. Las instrucciones BASIC de este documento son históricas.
+
 ## Unitarias
 
 `mvn test`: 21 pruebas JUnit/Mockito en ComponentesTest y PortfolioSesionTest, sin fallos ni errores. `mvn package`: BUILD SUCCESS y WAR generado. Java 17, Maven 3.9.9. También se probó el empaquetado `demo-init`. El perfil `mysql` también se desplegó y verificó contra la importación local del SQL del equipo.

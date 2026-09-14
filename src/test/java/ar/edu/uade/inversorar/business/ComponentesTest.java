@@ -170,6 +170,10 @@ class ComponentesTest {
         var bean=new PortfolioActualBean(); var contexto=mock(jakarta.ejb.SessionContext.class); var repo=mock(PortfolioRepository.class);
         when(contexto.isCallerInRole("USUARIO")).thenReturn(true); when(contexto.getCallerPrincipal()).thenReturn(()->"ana");
         when(repo.porPropietario("ana")).thenReturn(Optional.of(cartera)); inyectar(bean,"contexto",contexto); inyectar(bean,"portfolios",repo);
+        var usuarios = mock(UsuarioRepository.class); var usuario = mock(Usuario.class);
+        when(usuario.getId()).thenReturn(42L); when(usuarios.buscarPorEmail("ana")).thenReturn(Optional.of(usuario));
+        inyectar(bean,"usuarios",usuarios);
         assertSame(cartera,bean.obtener()); verify(repo,never()).guardar(any());
+        assertEquals(42L, cartera.getUsuarioId());
     }
 }
