@@ -202,10 +202,36 @@ if ($CambiarPassword -or $CambiarConexion -or $cambioUsuario -or -not (Existe "/
 Paso "Driver y datasource"
 if ((JbossCli @("--file=$repo\config\mysql-driver.cli")).Codigo -ne 0) { Falla "No se pudo registrar el driver MySQL." }
 Ok "Driver 'mysql' registrado"
+# Un datasource que no use las propiedades del script (p. ej. de un standalone-full.xml copiado de
+# otra máquina) se reemplaza por el del repositorio.
+$dsRecurso = "/subsystem=datasources/data-source=InversorARDS"
+$def = JbossCli @("--command=$($dsRecurso):read-resource")
+if ($def.Codigo -eq 0) {
+    $propio = $def.Salida -match [regex]::Escape('"connection-url" => expression "${inversorar.jdbc.url}"') -and
+              $def.Salida -match [regex]::Escape('"user-name" => expression "${inversorar.jdbc.user}"') -and
+              $def.Salida -match [regex]::Escape('"password" => expression "${inversorar.jdbc.password}"') -and
+              $def.Salida -match '"driver-name" => "mysql"'
+    if (-not $propio) {
+        if ((JbossCli @("--command=$($dsRecurso):remove")).Codigo -ne 0) { Falla "No se pudo quitar el datasource InversorARDS anterior." }
+        Write-Host "    Se reemplazó un datasource InversorARDS con otra configuración (por ejemplo, copiado de otra máquina)."
+    }
+}
+function ProbarDatasource { (JbossCli @("--command=$($dsRecurso):test-connection-in-pool")).Salida }
 $ds = JbossCli @("--file=$repo\config\mysql-datasource.cli")
-if ($ds.Codigo -ne 0 -or $ds.Salida -notmatch '\[true\]') {
-    Write-Host $ds.Salida
-    Falla "El datasource no pudo conectarse a MySQL. Revisar que MySQL esté corriendo, la URL, el usuario y la contraseña (-CambiarPassword)."
+$prueba = $ds.Salida
+if ($prueba -notmatch '\[true\]') {
+    # Un datasource definido antes de que existiera el driver (o recién recreado) no arranca hasta recargar.
+    Write-Host "    El datasource todavía no responde: recargando WildFly y probando de nuevo..."
+    JbossCli @("--command=:reload") | Out-Null
+    EsperarServidor
+    $prueba = ProbarDatasource
+}
+if ($prueba -notmatch '\[true\]') {
+    Write-Host $prueba
+    Falla ("El datasource no pudo conectarse a MySQL. Revisar:`n" +
+        "  - que exista la base y que el usuario tenga permisos sobre ella (docs/MYSQL.md);`n" +
+        "  - servidor, puerto, base y usuario: volver a ejecutar con -CambiarConexion;`n" +
+        "  - la contraseña: volver a ejecutar con -CambiarPassword.")
 }
 Ok "Datasource InversorARDS conectado a MySQL"
 
