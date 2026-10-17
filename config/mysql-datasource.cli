@@ -1,6 +1,8 @@
-# Ejecutar con jboss-cli contra el servidor elegido, luego de instalar driver y credential-store.
-# Propiedades del SERVIDOR: inversorar.jdbc.url e inversorar.jdbc.user.
-# Sustituir SOLO los nombres locales de driver, store y alias si el equipo usa otros.
-# No contiene contraseña y no crea/elimina tablas.
-/subsystem=datasources/data-source=InversorARDS:add(jndi-name=java:jboss/datasources/InversorARDS,driver-name=mysql,connection-url="${inversorar.jdbc.url}",user-name="${inversorar.jdbc.user}",credential-reference={store=inversorarCredentials,alias=mysql-password},jta=true,enabled=true)
+# Ejecutar con jboss-cli contra el servidor elegido, luego de config/mysql-driver.cli.
+# Propiedades del SERVIDOR (cada integrante las carga en su WildFly, fuera de Git):
+#   inversorar.jdbc.url, inversorar.jdbc.user e inversorar.jdbc.password.
+# No contiene contraseña y no crea/elimina tablas. Puede repetirse: solo crea el datasource si falta.
+if (outcome != success) of /subsystem=datasources/data-source=InversorARDS:read-resource
+    /subsystem=datasources/data-source=InversorARDS:add(jndi-name=java:jboss/datasources/InversorARDS,driver-name=mysql,connection-url="${inversorar.jdbc.url}",user-name="${inversorar.jdbc.user}",password="${inversorar.jdbc.password}",jta=true,enabled=true)
+end-if
 /subsystem=datasources/data-source=InversorARDS:test-connection-in-pool

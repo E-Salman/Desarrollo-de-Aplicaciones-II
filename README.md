@@ -77,6 +77,17 @@ Copy-Item target/inversorar.war "$env:WILDFLY_HOME/standalone/deployments/"
 
 Antes de desplegar, ejecutar `bin/jboss-cli.bat --connect --file=config/wildfly-security.cli` desde el repositorio. Luego abrir `/inversorar/registro` y crear una cuenta; `/dashboard` lleva al formulario de login. El principal y el rol `USUARIO` se establecen mediante Jakarta Security contra la BD. Ver [configuración y migración](docs/AUTENTICACION.md). Se requiere HTTPS fuera de localhost.
 
+### WildFly con mensajería (perfil MySQL)
+
+La mensajería asincrónica usa el broker ActiveMQ Artemis embebido en WildFly, que solo está en `standalone-full.xml`; el proyecto compila contra `jakarta.jakartaee-api` (plataforma completa, no Web Profile). Cada `standalone*.xml` tiene su propia configuración, así que lo hecho sobre `standalone.xml` no se hereda. Verificado con WildFly 41.0.1.Final, JDK 21 y MySQL 8.0.
+
+1. Arrancar `bin/standalone.bat -c standalone-full.xml` y dejarlo corriendo.
+2. Desde `bin/jboss-cli.bat --connect`, cargar las propiedades del servidor `inversorar.jdbc.url`, `inversorar.jdbc.user` e `inversorar.jdbc.password` (`/system-property=NOMBRE:add(value="...")`). Quedan en la configuración local, nunca en Git.
+3. Ejecutar desde el repositorio, en este orden, `jboss-cli.bat --connect --file=...` con `config/mysql-driver.cli`, `config/mysql-datasource.cli` (debe terminar en `[true]`), `config/wildfly-security.cli` y `config/wildfly-messaging.cli`.
+4. `mvn -Pmysql package` y copiar `target/inversorar.war` a `standalone/deployments/`.
+
+`wildfly-messaging.cli` crea la cola `ordenes` (`java:/jms/queue/ordenes`) y `DLQ.ordenes`: tras 3 entregas fallidas, con 5 s de espera, el mensaje pasa a la DLQ. Las colas y su cantidad de mensajes se ven en la consola de administración (`http://127.0.0.1:9990`, Runtime → Messaging), que requiere un usuario de administración creado con `bin/add-user.bat`.
+
 El perfil `demo-init` usa `create`, solo para una BD vacía. No es una migración ni debe desplegarse sobre datos del equipo. H2 ExampleDS es una demostración en memoria; MySQL se prepara mediante `mvn -Pmysql package` y un datasource externo. Ver [integración y BD](docs/INTEGRACION.md).
 
 ## Patrones y componentes con ciclo de vida

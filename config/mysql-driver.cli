@@ -1,0 +1,5 @@
+# Registra el driver "mysql" sobre el módulo com.mysql (Connector/J ya instalado en modules/com/mysql).
+# Cada archivo standalone*.xml tiene su propio registro: ejecutarlo también al pasar a standalone-full.xml.
+if (outcome != success) of /subsystem=datasources/jdbc-driver=mysql:read-resource
+    /subsystem=datasources/jdbc-driver=mysql:add(driver-name=mysql,driver-module-name=com.mysql,driver-class-name=com.mysql.cj.jdbc.Driver,driver-xa-datasource-class-name=com.mysql.cj.jdbc.MysqlXADataSource)
+end-if

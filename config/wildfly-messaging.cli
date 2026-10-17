@@ -1,0 +1,12 @@
+# Ejecutar una vez con WildFly iniciado en standalone-full.xml (trae el broker ActiveMQ Artemis embebido).
+# Puede repetirse: solo crea lo que falta. No modifica la DLQ ni la ExpiryQueue genéricas del servidor.
+if (outcome != success) of /subsystem=messaging-activemq/server=default/jms-queue=DLQ.ordenes:read-resource
+    /subsystem=messaging-activemq/server=default/jms-queue=DLQ.ordenes:add(entries=["java:/jms/queue/DLQ.ordenes"],durable=true)
+end-if
+if (outcome != success) of /subsystem=messaging-activemq/server=default/jms-queue=ordenes:read-resource
+    /subsystem=messaging-activemq/server=default/jms-queue=ordenes:add(entries=["java:/jms/queue/ordenes"],durable=true)
+end-if
+# Reintentos: 3 entregas con 5 s de espera; luego el mensaje pasa a DLQ.ordenes.
+if (outcome != success) of /subsystem=messaging-activemq/server=default/address-setting=jms.queue.ordenes:read-resource
+    /subsystem=messaging-activemq/server=default/address-setting=jms.queue.ordenes:add(dead-letter-address=jms.queue.DLQ.ordenes,max-delivery-attempts=3,redelivery-delay=5000)
+end-if
