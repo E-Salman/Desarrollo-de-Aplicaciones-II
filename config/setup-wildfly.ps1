@@ -5,16 +5,25 @@
 .DESCRIPTION
     Requiere WildFly iniciado con:  bin\standalone.bat -c standalone-full.xml
     Pasos: propiedades JDBC, driver MySQL, datasource, seguridad, colas, compilación y despliegue.
-    Se puede repetir: lo que ya existe no se duplica. La contraseña de MySQL se pide oculta, solo
-    si todavía no está cargada (o con -CambiarPassword), y nunca se guarda en el repositorio.
+    Se puede repetir: lo que ya existe no se duplica.
+    Conexión a MySQL: la primera vez pregunta servidor, puerto, base y usuario (Enter acepta el valor
+    sugerido); después conserva lo cargado, salvo que se pasen parámetros o -CambiarConexion.
+    La contraseña se pide oculta y nunca se guarda en el repositorio.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File config\setup-wildfly.ps1 -WildflyHome C:\wildfly-41.0.1.Final
+
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File config\setup-wildfly.ps1 -WildflyHome C:\wildfly -BaseDatos inversorar -Usuario app
 #>
 param(
     [string]$WildflyHome = $env:WILDFLY_HOME,
-    [string]$JdbcUrl = "jdbc:mysql://127.0.0.1:3306/instrumentos?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-    [string]$JdbcUser = "root",
+    [string]$Servidor,        # host de MySQL (sugerido: 127.0.0.1)
+    [string]$Puerto,          # sugerido: 3306
+    [string]$BaseDatos,       # sugerido: instrumentos
+    [string]$Usuario,         # sugerido: root
+    [string]$JdbcUrl,         # avanzado: URL JDBC completa; reemplaza servidor, puerto y base
+    [switch]$CambiarConexion, # vuelve a preguntar servidor, puerto, base, usuario y contraseña
     [switch]$CambiarPassword,
     [switch]$SinCompilar
 )
@@ -76,11 +85,40 @@ function FijarPropiedad([string]$nombre, [string]$valor) {
     $r = JbossCliTexto "/system-property=$($nombre):$op`n"
     if ($r.Codigo -ne 0) { Falla "No se pudo cargar la propiedad $nombre." }
 }
-FijarPropiedad "inversorar.jdbc.url" $JdbcUrl
-FijarPropiedad "inversorar.jdbc.user" $JdbcUser
-Ok "URL y usuario ($JdbcUser)"
-if ($CambiarPassword -or -not (Existe "/system-property=inversorar.jdbc.password")) {
-    $segura = Read-Host "    Contraseña de MySQL para '$JdbcUser' (no se muestra)" -AsSecureString
+function LeerPropiedad([string]$nombre) {
+    $r = JbossCli @("--command=/system-property=$($nombre):read-attribute(name=value)")
+    if ($r.Codigo -eq 0 -and $r.Salida -match '"result" => "(.*)"') { return $Matches[1] }
+    return $null
+}
+function Preguntar([string]$texto, [string]$sugerido) {
+    $v = Read-Host "    $texto [$sugerido]"
+    if ([string]::IsNullOrWhiteSpace($v)) { return $sugerido } else { return $v.Trim() }
+}
+$urlActual = LeerPropiedad "inversorar.jdbc.url"
+$usuarioActual = LeerPropiedad "inversorar.jdbc.user"
+
+# URL: parámetro completo > partes indicadas o preguntadas > la ya cargada.
+if ($JdbcUrl) {
+    $url = $JdbcUrl
+} elseif ($Servidor -or $Puerto -or $BaseDatos -or $CambiarConexion -or -not $urlActual) {
+    if (-not $Servidor) { $Servidor = Preguntar "Servidor de MySQL" "127.0.0.1" }
+    if (-not $Puerto) { $Puerto = Preguntar "Puerto" "3306" }
+    if (-not $BaseDatos) { $BaseDatos = Preguntar "Base de datos" "instrumentos" }
+    $url = "jdbc:mysql://$($Servidor):$Puerto/$($BaseDatos)?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
+} else {
+    $url = $urlActual
+}
+# Usuario: parámetro > preguntado (primera vez o -CambiarConexion) > el ya cargado.
+if ($Usuario) { $user = $Usuario }
+elseif ($CambiarConexion -or -not $usuarioActual) { $user = Preguntar "Usuario de MySQL" "root" }
+else { $user = $usuarioActual }
+
+FijarPropiedad "inversorar.jdbc.url" $url
+FijarPropiedad "inversorar.jdbc.user" $user
+Ok "Conexión: $user @ $(($url -replace '^jdbc:mysql://', '') -replace '\?.*$', '')"
+$cambioUsuario = $usuarioActual -and $usuarioActual -ne $user
+if ($CambiarPassword -or $CambiarConexion -or $cambioUsuario -or -not (Existe "/system-property=inversorar.jdbc.password")) {
+    $segura = Read-Host "    Contraseña de MySQL para '$user' (no se muestra)" -AsSecureString
     $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura)
     try { FijarPropiedad "inversorar.jdbc.password" ([Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)) }
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
@@ -123,22 +161,31 @@ Paso "Desplegando"
 $war = Join-Path $repo "target\inversorar.war"
 if (-not (Test-Path $war)) { Falla "No existe $war. Ejecutar sin -SinCompilar." }
 $deploy = Join-Path $WildflyHome "standalone\deployments"
-# El despliegue terminó cuando WildFly tiene un contenido distinto del anterior y su estado es OK.
-function Contenido { (JbossCli @("--command=/deployment=inversorar.war:read-attribute(name=content)")).Salida }
-$anterior = Contenido
-Copy-Item $war $deploy -Force
-$listo = $false
-for ($i = 0; $i -lt 60 -and -not $listo; $i++) {
-    Start-Sleep -Seconds 2
-    $actual = Contenido
-    if ($actual -match '"outcome" => "success"' -and $actual -ne $anterior) {
-        $estado = (JbossCli @("--command=/deployment=inversorar.war:read-attribute(name=status)")).Salida
-        if ($estado -match '"FAILED"') { Falla "El despliegue falló. Ver el log en $WildflyHome\standalone\log\server.log" }
-        $listo = $estado -match '"OK"'
-    }
+# WildFly identifica el contenido desplegado por su SHA-1: el despliegue terminó cuando corre
+# exactamente este WAR con estado OK. Si ya estaba desplegado igual, no se vuelve a copiar.
+function HashDesplegado {
+    $r = JbossCli @("--command=/deployment=inversorar.war:read-attribute(name=content)")
+    if ($r.Codigo -ne 0) { return "" }
+    return (([regex]::Matches($r.Salida, '0x([0-9a-f]{2})') | ForEach-Object { $_.Groups[1].Value }) -join "")
 }
-if (-not $listo) { Falla "El despliegue no terminó a tiempo. Ver el log en $WildflyHome\standalone\log\server.log" }
-Ok "inversorar.war desplegado"
+function EstadoDespliegue { (JbossCli @("--command=/deployment=inversorar.war:read-attribute(name=status)")).Salida }
+$hashWar = (Get-FileHash $war -Algorithm SHA1).Hash.ToLower()
+if ((HashDesplegado) -eq $hashWar -and (EstadoDespliegue) -match '"OK"') {
+    Ok "inversorar.war ya estaba desplegado (mismo WAR, sin cambios)"
+} else {
+    Copy-Item $war $deploy -Force
+    $listo = $false
+    for ($i = 0; $i -lt 60 -and -not $listo; $i++) {
+        Start-Sleep -Seconds 2
+        if ((HashDesplegado) -eq $hashWar) {
+            $estado = EstadoDespliegue
+            if ($estado -match '"FAILED"') { Falla "El despliegue falló. Ver el log en $WildflyHome\standalone\log\server.log" }
+            $listo = $estado -match '"OK"'
+        }
+    }
+    if (-not $listo) { Falla "El despliegue no terminó a tiempo. Ver el log en $WildflyHome\standalone\log\server.log" }
+    Ok "inversorar.war desplegado"
+}
 
 Write-Host ""
 Write-Host "Listo. Abrir http://localhost:8080/inversorar/dashboard" -ForegroundColor Green
