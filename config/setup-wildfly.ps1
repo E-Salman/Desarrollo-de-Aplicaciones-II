@@ -135,10 +135,31 @@ if (-not (Test-Path (Join-Path $repo "pom.xml")) -or -not (Test-Path (Join-Path 
     Falla "Este script tiene que ejecutarse desde la carpeta config del repositorio (no una copia suelta).`n  Abrir <repo>\config\setup-wildfly.ps1, en la rama mensajeria."
 }
 Ok "Repositorio: $repo"
-if (-not $WildflyHome) {
-    $WildflyHome = (Read-Host "    Carpeta de WildFly (la que contiene bin\)").Trim().Trim('"')
-    if (-not $WildflyHome) { Falla "Indicar la carpeta de WildFly con -WildflyHome o la variable WILDFLY_HOME." }
+# Carpeta de WildFly: parámetro / WILDFLY_HOME > la recordada por iniciar-wildfly.ps1 > preguntar.
+# Acepta también la carpeta que la contiene (zip descomprimido con carpeta anidada).
+function CarpetaWildfly([string]$ruta) {
+    if (-not $ruta) { return $null }
+    $ruta = $ruta.Trim().Trim('"')
+    if (Test-Path (Join-Path $ruta "bin\jboss-cli.bat")) { return (Resolve-Path $ruta).Path }
+    $sub = Get-ChildItem $ruta -Directory -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path (Join-Path $_.FullName "bin\jboss-cli.bat") } | Select-Object -First 1
+    if ($sub) { return $sub.FullName }
+    return $null
 }
+$recordada = Join-Path $env:APPDATA "InversorAR\wildfly-home.txt"
+$wf = CarpetaWildfly $WildflyHome
+if (-not $wf -and $WildflyHome) { Falla "No se encontró bin\jboss-cli.bat en '$WildflyHome'." }
+if (-not $wf -and (Test-Path $recordada)) { $wf = CarpetaWildfly (Get-Content $recordada -Raw) }
+while (-not $wf) {
+    $r = Read-Host "    Carpeta de WildFly (donde está la carpeta bin)"
+    if (-not $r) { Falla "Indicar la carpeta de WildFly con -WildflyHome o la variable WILDFLY_HOME." }
+    $wf = CarpetaWildfly $r
+    if (-not $wf) { Write-Host "    No se encontró bin\jboss-cli.bat en '$r'. Probar de nuevo." -ForegroundColor Yellow }
+}
+$WildflyHome = $wf
+New-Item -ItemType Directory -Force (Split-Path $recordada) | Out-Null
+Set-Content $recordada $WildflyHome -Encoding UTF8
+Ok "WildFly: $WildflyHome"
 $script:cli = Join-Path $WildflyHome "bin\jboss-cli.bat"
 if (-not (Test-Path $script:cli)) { Falla "No se encontró $script:cli. ¿La carpeta de WildFly es correcta (la que contiene bin\)?" }
 if ((JbossCli @("--command=:read-attribute(name=server-state)")).Codigo -ne 0) {

@@ -83,8 +83,8 @@ La mensajería asincrónica usa el broker ActiveMQ Artemis embebido en WildFly, 
 
 Requisitos: MySQL con la base preparada (ver [MySQL](docs/MYSQL.md)) y WildFly fuera de OneDrive. El driver Connector/J no hace falta instalarlo: si WildFly no tiene el módulo `com.mysql`, el script lo crea con un `.jar` que encuentre en `standalone/deployments` o en `.m2`, o lo descarga de Maven Central verificando su SHA-1 (`-DriverJar` permite indicar uno propio). También se puede ejecutar con F5 desde PowerShell ISE abriendo `config\setup-wildfly.ps1` del repositorio: si no recibe la carpeta de WildFly, la pregunta.
 
-1. Arrancar WildFly y dejarlo corriendo: `bin/standalone.bat -c standalone-full.xml`.
-2. Desde la carpeta del repositorio, ejecutar el script de puesta en marcha (pide la contraseña de MySQL oculta la primera vez):
+1. Arrancar WildFly con **doble clic en `config\iniciar-wildfly.bat`** y dejar esa ventana abierta (Ctrl+C lo detiene). Siempre usa `standalone-full.xml`, avisa si ya hay un WildFly corriendo (y ofrece cerrarlo) y la primera vez pregunta la carpeta de WildFly y la recuerda (`%APPDATA%\InversorAR\wildfly-home.txt`; acepta también la carpeta que la contiene). `-CambiarCarpeta` la vuelve a preguntar. Equivale a `bin/standalone.bat -c standalone-full.xml`.
+2. Desde la carpeta del repositorio, ejecutar el script de puesta en marcha (pide la contraseña de MySQL oculta la primera vez; si ya se usó `iniciar-wildfly.bat`, toma la carpeta recordada y `-WildflyHome` no hace falta):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File config\setup-wildfly.ps1 -WildflyHome C:\ruta\a\wildfly
