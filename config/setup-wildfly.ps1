@@ -45,8 +45,15 @@ function Falla($texto) { Write-Host ""; Write-Host "ERROR: $texto" -ForegroundCo
 
 # Ejecuta comandos jboss-cli contra el servidor iniciado. Devuelve la salida como texto.
 function JbossCli([string[]]$argumentos) {
-    $salida = & $script:cli --connect @argumentos | Out-String
+    $salida = Nativo { & $script:cli --connect @argumentos } | Out-String
     return @{ Salida = $salida; Codigo = $LASTEXITCODE }
+}
+# Ejecuta un programa externo sin que sus avisos por stderr corten el script: PowerShell ISE (F5)
+# los convierte en errores. El resultado se decide por $LASTEXITCODE. Devuelve las líneas como texto.
+function Nativo([scriptblock]$comando) {
+    $anterior = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $comando 2>&1 | ForEach-Object { "$_" } } finally { $ErrorActionPreference = $anterior }
 }
 # Ejecuta un texto como script .cli temporal (evita problemas de comillas de PowerShell 5.1).
 function JbossCliTexto([string]$contenido) {
@@ -249,8 +256,12 @@ if ($SinCompilar) {
 } else {
     Paso "Compilando con el perfil MySQL"
     Push-Location $repo
-    try { & mvn -q -Pmysql clean package } finally { Pop-Location }
-    if ($LASTEXITCODE -ne 0) { Falla "Falló la compilación o los tests (mvn -Pmysql clean package)." }
+    try { $salidaMvn = Nativo { & mvn -q -Pmysql clean package } } finally { Pop-Location }
+    $codigoMvn = $LASTEXITCODE
+    # Avisos conocidos e inofensivos de la JVM y de Mockito; el resto se muestra.
+    $ruido = 'Sharing is only supported|Mockito is currently self-attaching|javadoc\.io/doc/org\.mockito|Java agent has been loaded|EnableDynamicAgentLoading|jdk\.instrument\.traceUsage|Dynamic loading of agents'
+    $salidaMvn | Where-Object { $_ -and $_ -notmatch $ruido } | ForEach-Object { Write-Host "    $_" }
+    if ($codigoMvn -ne 0) { Falla "Falló la compilación o los tests (mvn -Pmysql clean package). El detalle está arriba." }
     Ok "target\inversorar.war generado"
 }
 
