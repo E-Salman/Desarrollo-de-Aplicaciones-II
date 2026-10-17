@@ -4,7 +4,12 @@
 
 .DESCRIPTION
     Requiere WildFly iniciado con:  bin\standalone.bat -c standalone-full.xml
-    Pasos: propiedades JDBC, driver MySQL, datasource, seguridad, colas, compilación y despliegue.
+    Se ejecuta desde el repositorio (config\setup-wildfly.ps1), con F5 en PowerShell ISE o por consola.
+    Pasos: driver MySQL (lo instala si falta), propiedades JDBC, datasource, seguridad, colas,
+    compilación y despliegue.
+    Driver: si WildFly no tiene el módulo com.mysql, usa -DriverJar, o busca mysql-connector-j*.jar
+    en standalone\deployments y en el repositorio de Maven (.m2), o lo descarga de Maven Central
+    verificando su SHA-1.
     Se puede repetir: lo que ya existe no se duplica.
     Conexión a MySQL: la primera vez pregunta servidor, puerto, base y usuario (Enter acepta el valor
     sugerido); después conserva lo cargado, salvo que se pasen parámetros o -CambiarConexion.
@@ -25,8 +30,10 @@ param(
     [string]$JdbcUrl,         # avanzado: URL JDBC completa; reemplaza servidor, puerto y base
     [switch]$CambiarConexion, # vuelve a preguntar servidor, puerto, base, usuario y contraseña
     [switch]$CambiarPassword,
+    [string]$DriverJar,       # ruta a un mysql-connector-j*.jar, si no se quiere buscar ni descargar
     [switch]$SinCompilar
 )
+$DriverVersion = "8.4.0"
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
@@ -61,9 +68,70 @@ function EsperarServidor {
     Falla "WildFly no volvió a estado 'running' después de recargar."
 }
 
+# Crea el módulo com.mysql de WildFly (carpeta modules\com\mysql\main con el .jar y su module.xml).
+function InstalarModuloMysql([string]$jar) {
+    $dir = Join-Path $WildflyHome "modules\com\mysql\main"
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $nombre = Split-Path -Leaf $jar
+    Copy-Item $jar (Join-Path $dir $nombre) -Force
+    $xml = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<module xmlns="urn:jboss:module:1.9" name="com.mysql">
+    <resources>
+        <resource-root path="$nombre"/>
+    </resources>
+    <dependencies>
+        <module name="java.naming"/>
+        <module name="java.sql"/>
+        <module name="java.transaction.xa"/>
+        <module name="java.logging"/>
+        <module name="java.security.sasl"/>
+        <module name="java.xml"/>
+    </dependencies>
+</module>
+"@
+    [IO.File]::WriteAllText((Join-Path $dir "module.xml"), $xml)
+}
+# Busca un Connector/J ya presente en la máquina; si no hay, lo descarga de Maven Central.
+function ObtenerDriverJar {
+    if ($DriverJar) {
+        if (-not (Test-Path $DriverJar)) { Falla "No existe el archivo indicado en -DriverJar: $DriverJar" }
+        return (Resolve-Path $DriverJar).Path
+    }
+    $lugares = @((Join-Path $WildflyHome "standalone\deployments"), (Join-Path $env:USERPROFILE ".m2\repository\com\mysql"))
+    $encontrado = $lugares | Where-Object { Test-Path $_ } |
+        ForEach-Object { Get-ChildItem $_ -Recurse -Filter "mysql-connector-j-*.jar" -ErrorAction SilentlyContinue } |
+        Where-Object { $_.Name -notmatch "sources|javadoc" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($encontrado) { Ok "Driver encontrado en $($encontrado.FullName)"; return $encontrado.FullName }
+
+    $url = "https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/$DriverVersion/mysql-connector-j-$DriverVersion.jar"
+    $destino = Join-Path ([IO.Path]::GetTempPath()) "mysql-connector-j-$DriverVersion.jar"
+    Write-Host "    Descargando Connector/J $DriverVersion de Maven Central..."
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest $url -OutFile $destino -UseBasicParsing
+        $esperado = (Invoke-WebRequest "$url.sha1" -UseBasicParsing).Content.ToString().Trim().Split(" ")[0].ToLower()
+    } catch {
+        Falla "No se pudo descargar el driver ($($_.Exception.Message)).`n  Descargarlo a mano de $url y volver a ejecutar con -DriverJar <ruta del .jar>"
+    }
+    if ((Get-FileHash $destino -Algorithm SHA1).Hash.ToLower() -ne $esperado) {
+        Remove-Item $destino -Force -ErrorAction SilentlyContinue
+        Falla "El driver descargado no coincide con el SHA-1 publicado por Maven Central. Reintentar más tarde."
+    }
+    Ok "Driver descargado y verificado (SHA-1)"
+    return $destino
+}
+
 # ---------------------------------------------------------------------------
-Paso "Verificando WildFly"
-if (-not $WildflyHome) { Falla "Indicar la carpeta de WildFly con -WildflyHome o la variable WILDFLY_HOME." }
+Paso "Verificando repositorio y WildFly"
+if (-not (Test-Path (Join-Path $repo "pom.xml")) -or -not (Test-Path (Join-Path $repo "config\mysql-datasource.cli"))) {
+    Falla "Este script tiene que ejecutarse desde la carpeta config del repositorio (no una copia suelta).`n  Abrir <repo>\config\setup-wildfly.ps1, en la rama mensajeria."
+}
+Ok "Repositorio: $repo"
+if (-not $WildflyHome) {
+    $WildflyHome = (Read-Host "    Carpeta de WildFly (la que contiene bin\)").Trim().Trim('"')
+    if (-not $WildflyHome) { Falla "Indicar la carpeta de WildFly con -WildflyHome o la variable WILDFLY_HOME." }
+}
 $script:cli = Join-Path $WildflyHome "bin\jboss-cli.bat"
 if (-not (Test-Path $script:cli)) { Falla "No se encontró $script:cli. ¿La carpeta de WildFly es correcta (la que contiene bin\)?" }
 if ((JbossCli @("--command=:read-attribute(name=server-state)")).Codigo -ne 0) {
@@ -73,10 +141,13 @@ if (-not (Existe "/subsystem=messaging-activemq")) {
     Falla "WildFly está corriendo sin mensajería. Detenerlo y reiniciarlo con -c standalone-full.xml"
 }
 Ok "WildFly en modo full, con broker de mensajería"
-if (-not (Test-Path (Join-Path $WildflyHome "modules\com\mysql\main\module.xml"))) {
-    Falla "Falta el módulo del driver MySQL (modules\com\mysql\main). Instalarlo con:`n  & `"$script:cli`" --command=`"module add --name=com.mysql --resources=C:\ruta\mysql-connector-j.jar --dependencies=jakarta.transaction.api`""
+if (Test-Path (Join-Path $WildflyHome "modules\com\mysql\main\module.xml")) {
+    Ok "Módulo del driver MySQL ya instalado"
+} else {
+    Write-Host "    Falta el módulo del driver MySQL: instalándolo..."
+    InstalarModuloMysql (ObtenerDriverJar)
+    Ok "Módulo com.mysql instalado en $WildflyHome\modules\com\mysql\main"
 }
-Ok "Módulo del driver MySQL instalado"
 
 # ---------------------------------------------------------------------------
 Paso "Propiedades de conexión a MySQL"

@@ -81,7 +81,7 @@ Antes de desplegar, ejecutar `bin/jboss-cli.bat --connect --file=config/wildfly-
 
 La mensajería asincrónica usa el broker ActiveMQ Artemis embebido en WildFly, que solo está en `standalone-full.xml`; el proyecto compila contra `jakarta.jakartaee-api` (plataforma completa, no Web Profile). Cada `standalone*.xml` tiene su propia configuración, así que lo hecho sobre `standalone.xml` no se hereda. Verificado con WildFly 41.0.1.Final, JDK 21 y MySQL 8.0.
 
-Requisitos: MySQL con la base preparada (ver [MySQL](docs/MYSQL.md)), WildFly fuera de OneDrive y el driver Connector/J instalado como módulo `com.mysql`.
+Requisitos: MySQL con la base preparada (ver [MySQL](docs/MYSQL.md)) y WildFly fuera de OneDrive. El driver Connector/J no hace falta instalarlo: si WildFly no tiene el módulo `com.mysql`, el script lo crea con un `.jar` que encuentre en `standalone/deployments` o en `.m2`, o lo descarga de Maven Central verificando su SHA-1 (`-DriverJar` permite indicar uno propio). También se puede ejecutar con F5 desde PowerShell ISE abriendo `config\setup-wildfly.ps1` del repositorio: si no recibe la carpeta de WildFly, la pregunta.
 
 1. Arrancar WildFly y dejarlo corriendo: `bin/standalone.bat -c standalone-full.xml`.
 2. Desde la carpeta del repositorio, ejecutar el script de puesta en marcha (pide la contraseña de MySQL oculta la primera vez):
