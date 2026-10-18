@@ -43,6 +43,31 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
         porcentajes.put(tipo, valor);
     }
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public SimulacionDto definirPlan(BigDecimal nuevoCapital, Map<TipoInstrumento, BigDecimal> distribucion) {
+        if (nuevoCapital == null || nuevoCapital.signum() < 0 || nuevoCapital.compareTo(new BigDecimal("999999999999.99")) > 0
+                || nuevoCapital.stripTrailingZeros().scale() > 2)
+            throw new ReglaNegocioException("Capital inválido: máximo 999999999999.99 y dos decimales");
+        if (distribucion == null) throw new ReglaNegocioException("Debe indicar la distribución");
+        var nuevoPlan = new EnumMap<TipoInstrumento, BigDecimal>(TipoInstrumento.class);
+        BigDecimal total = BigDecimal.ZERO;
+        for (var entrada : distribucion.entrySet()) {
+            BigDecimal valor = entrada.getValue();
+            if (entrada.getKey() == null || valor == null || valor.signum() < 0
+                    || valor.compareTo(BigDecimal.valueOf(100)) > 0 || valor.stripTrailingZeros().scale() > 4)
+                throw new ReglaNegocioException("Cada porcentaje debe estar entre 0 y 100, con hasta cuatro decimales");
+            total = total.add(valor);
+            nuevoPlan.put(entrada.getKey(), valor);
+        }
+        if (total.compareTo(BigDecimal.valueOf(100)) > 0)
+            throw new ReglaNegocioException("La distribución supera 100%");
+        // Validar el plan completo antes de modificar la conversación. No persiste operaciones.
+        capital = nuevoCapital;
+        porcentajes.clear();
+        porcentajes.putAll(nuevoPlan);
+        return calcularSimulacion();
+    }
+
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     public SimulacionDto calcularSimulacion() {
         SimulacionDto dto = new SimulacionDto(); dto.capital = capital;
         dto.porcentajes = new EnumMap<>(porcentajes); dto.importes = new EnumMap<>(TipoInstrumento.class);
