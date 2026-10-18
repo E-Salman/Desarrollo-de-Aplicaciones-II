@@ -45,9 +45,14 @@
         <form id="sim-form" class="sim-editor">
             <fieldset id="sim-fields" disabled>
                 <div class="sim-capital">
+                    <label for="sim-currency">Moneda de referencia</label>
+                    <select id="sim-currency" name="moneda" aria-describedby="sim-moneda">
+                        <option value="ARS">ARS · Pesos argentinos</option>
+                        <option value="USD">USD · Dólares estadounidenses</option>
+                    </select>
                     <label for="sim-capital">Capital a distribuir</label>
                     <input id="sim-capital" name="capital" type="number" min="0" max="999999999999.99" step="0.01" required value="0" aria-describedby="sim-moneda">
-                    <p id="sim-moneda">Usá una única moneda de referencia para todo el plan. Los importes se expresan en esa misma moneda; no se realizan conversiones.</p>
+                    <p id="sim-moneda">Todos los importes usan la moneda elegida. Cambiar ARS por USD cambia la referencia del plan, sin convertir el capital ni aplicar un tipo de cambio.</p>
                 </div>
                 <div class="sim-table-heading"><h2>Distribución por tipo</h2><span>Porcentaje del capital</span></div>
                 <div class="sim-types">
@@ -75,6 +80,14 @@
         </aside>
     </div>
     <noscript>Activá JavaScript para usar el simulador.</noscript>
+    <dialog id="sim-leave" class="sim-leave" aria-labelledby="sim-leave-title" aria-describedby="sim-leave-description">
+        <h2 id="sim-leave-title">Tenés cambios sin aplicar</h2>
+        <p id="sim-leave-description"></p>
+        <div class="sim-leave-actions">
+            <button type="button" id="sim-stay" autofocus>Seguir editando</button>
+            <button type="button" id="sim-leave-confirm">Salir sin aplicar</button>
+        </div>
+    </dialog>
 </main>
 </body>
 </html>

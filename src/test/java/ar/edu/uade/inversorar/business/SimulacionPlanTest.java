@@ -7,6 +7,27 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SimulacionPlanTest {
+    @Test void monedaEsReferenciaDelPlanSinConvertirImportes() {
+        var bean = new PortfolioServiceBean();
+        assertEquals("ARS", bean.calcularSimulacion().moneda);
+        var dto = bean.definirPlan(n("1000"), Map.of(TipoInstrumento.ACCION,n("40")), "USD");
+        assertEquals("USD",dto.moneda); igual("400",dto.importes.get(TipoInstrumento.ACCION));
+        dto = bean.definirPlan(n("1000"), Map.of(TipoInstrumento.ACCION,n("40")), "ARS");
+        assertEquals("ARS",dto.moneda); igual("400",dto.importes.get(TipoInstrumento.ACCION));
+    }
+
+    @Test void validaMonedaAntesDeMutarYConservaCompatibilidad() {
+        var bean = new PortfolioServiceBean();
+        bean.definirPlan(n("100"), Map.of(TipoInstrumento.BONO,n("50")), "USD");
+        for (String moneda : new String[]{null,"","EUR","usd"})
+            assertThrows(ReglaNegocioException.class, () -> bean.definirPlan(n("200"),Map.of(),moneda));
+        assertEquals("USD",bean.calcularSimulacion().moneda); igual("100",bean.calcularSimulacion().capital);
+        bean.definirPlan(n("200"),Map.of());
+        assertEquals("USD",bean.calcularSimulacion().moneda);
+        assertEquals("ARS",new PortfolioServiceBean().calcularSimulacion().moneda);
+        bean.reiniciarSimulacion(); assertEquals("ARS",bean.calcularSimulacion().moneda);
+    }
+
     private BigDecimal n(String s) { return new BigDecimal(s); }
     private void igual(String expected, BigDecimal actual) { assertEquals(0, n(expected).compareTo(actual)); }
 

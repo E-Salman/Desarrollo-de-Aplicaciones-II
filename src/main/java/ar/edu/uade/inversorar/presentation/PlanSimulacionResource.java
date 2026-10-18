@@ -32,12 +32,14 @@ public class PlanSimulacionResource {
             }
         }
         request.getSession(true);
-        return sesion.servicio(request.getUserPrincipal().getName())
-                .definirPlan(entrada.capital, plan);
+        var servicio = sesion.servicio(request.getUserPrincipal().getName());
+        return entrada.moneda == null ? servicio.definirPlan(entrada.capital, plan)
+                : servicio.definirPlan(entrada.capital, plan, entrada.moneda);
     }
 
     public static class Plan {
         public BigDecimal capital;
+        public String moneda;
         public Map<String, BigDecimal> porcentajes;
     }
 }

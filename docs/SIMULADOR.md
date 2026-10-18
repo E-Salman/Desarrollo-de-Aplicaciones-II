@@ -5,8 +5,11 @@ de un capital de referencia entre todos los valores de `TipoInstrumento`:
 ACCION, CRIPTO, BONO, CEDEAR y MONEDA. No proyecta rendimientos, convierte monedas,
 elige instrumentos ni registra compras o ventas.
 
-El capital y sus importes se expresan en la misma moneda que decida usar el
-usuario para el plan; no se mezclan cotizaciones de los pares del catálogo.
+El usuario elige ARS o USD como moneda de referencia. Capital, importes y disponible
+se muestran con su código. La moneda se aplica y conserva junto con el plan en la
+sesión; reiniciar vuelve a ARS. Cambiarla no convierte valores ni consulta un tipo
+de cambio: 1000 ARS pasa a representar un plan de 1000 USD si se elige USD.
+No se mezclan cotizaciones de los pares del catálogo.
 El catálogo MySQL recibido contiene instrumentos CRIPTO. Un activo FIAT de la
 tabla `activos` identifica una moneda de un par, no una categoría adicional.
 Las categorías sin instrumentos siguen disponibles para planificar y se indican
@@ -24,6 +27,13 @@ se puede seguir simulando. No se agregaron tipos que el negocio no admite.
    son solamente una vista previa.
 5. Reiniciar elimina solo el plan de esa sesión. Cerrar sesión lo descarta.
 
+Si se intenta navegar a otra pantalla con cambios sin aplicar, se pide confirmar
+la salida. Cancelar conserva el formulario, incluidos datos inválidos. Al recargar,
+cerrar la pestaña o usar Atrás, el navegador muestra su aviso estándar si detecta
+cambios pendientes y hubo interacción del usuario; el texto depende del navegador.
+No hay avisos si el formulario coincide con el plan aplicado. Una operación en
+curso también activa el aviso. Los datos no aplicados no se guardan automáticamente.
+
 La pantalla usa aritmética entera escalada con BigInt. El backend usa BigDecimal.
 Con dos decimales de capital y cuatro de porcentaje, los importes pueden tener
 hasta ocho decimales. Se muestran completos para que, por ejemplo, 0.01 repartido
@@ -36,10 +46,12 @@ La suma de importes y disponible es igual al capital.
 - PUT `/api/portfolio/simulacion/plan` acepta:
 
 ```json
-{"capital":"100000","porcentajes":{"ACCION":"30","CRIPTO":"20","BONO":"20","CEDEAR":"15","MONEDA":"10"}}
+{"capital":"100000","moneda":"ARS","porcentajes":{"ACCION":"30","CRIPTO":"20","BONO":"20","CEDEAR":"15","MONEDA":"10"}}
 ```
 
-Responde con `SimulacionDto`: capital, porcentajes, importes y disponible.
+Responde con `SimulacionDto`: moneda, capital, porcentajes, importes y disponible.
+El campo moneda se agrega sin cambiar los anteriores; las llamadas antiguas que
+lo omiten conservan la moneda del plan (ARS en una sesión nueva).
 Valida la entrada completa antes de reemplazar el estado, devuelve 400 para
 reglas inválidas o tipos desconocidos y conserva el plan anterior ante rechazo.
 No realiza escrituras JPA ni utiliza mensajería. Los endpoints anteriores de

@@ -25,7 +25,7 @@ class Client {
         await this.login();
     }
     async login() { await this.call('/login',{method:'POST',form:true,status:302,data:{email:this.email,password:this.password,csrf:await this.csrf('/login')}}); }
-    async save(capital,porcentajes,status=200) { return this.json(path+'/plan',{method:'PUT',data:{capital,porcentajes},status}); }
+    async save(capital,porcentajes,status=200,moneda) { return this.json(path+'/plan',{method:'PUT',data:{capital,porcentajes,moneda},status}); }
 }
 const guest=new Client();
 await guest.call('/simulador',{status:302});
@@ -34,6 +34,16 @@ const a=new Client(), b=new Client(); await a.create(); await b.create();
 const page=await a.call('/simulador');
 for(const type of types) assert.ok(page.includes(`data-tipo="${type}"`));
 const before=await a.json('/api/portfolio/resumen');
+assert.equal((await a.json(path)).moneda,'ARS');
+let currencyPlan=await a.save('1000',{ACCION:'40'},200,'USD');
+assert.equal(currencyPlan.moneda,'USD'); assert.equal(currencyPlan.importes.ACCION,400);
+assert.deepEqual(await a.json(path),currencyPlan);
+await a.save('2000',{},400,'EUR');
+assert.deepEqual(await a.json(path),currencyPlan);
+assert.equal((await b.json(path)).moneda,'ARS');
+assert.equal((await a.save('1000',{ACCION:'40'})).moneda,'USD');
+currencyPlan=await a.save('1000',{ACCION:'40'},200,'ARS');
+assert.equal(currencyPlan.importes.ACCION,400); assert.equal(currencyPlan.moneda,'ARS');
 for(const type of types) {
     const dto=await a.save('100000',{[type]:'100'});
     assert.equal(dto.importes[type],100000); assert.equal(dto.disponible,0);
@@ -57,6 +67,7 @@ assert.equal(dto.importes.MONEDA,999999.99999999);
 dto=await a.save('0',{CEDEAR:100}); assert.equal(dto.importes.CEDEAR,0);
 await a.call(path,{method:'DELETE',status:204});
 assert.equal((await a.json(path)).capital,0);
+assert.equal((await a.json(path)).moneda,'ARS');
 assert.deepEqual(await a.json('/api/portfolio/resumen'),before);
 await a.save('500',{CRIPTO:100});
 await a.call('/logout',{method:'POST',form:true,status:302,data:{csrf:await a.csrf('/registro')}});

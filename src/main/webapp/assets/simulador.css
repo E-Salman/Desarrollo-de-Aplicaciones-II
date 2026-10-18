@@ -15,6 +15,16 @@
 .sim-main input { background: #0a0b0e; border: 1px solid #394354; border-radius: 8px; color: var(--text); padding: 12px; font: 16px 'DM Mono', monospace; min-width: 0; }
 .sim-main input:focus-visible, .sim-main button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .sim-capital input { width: 100%; font-size: 24px; }
+#sim-currency { width: 100%; margin-bottom: 20px; padding: 12px; background: #0a0b0e; border: 1px solid #394354; border-radius: 8px; color: var(--text); font: inherit; }
+#sim-currency:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sim-leave { width: min(460px, calc(100vw - 32px)); background: var(--surface); color: var(--text); border: 1px solid #465064; border-radius: 14px; padding: 26px; }
+.sim-leave::backdrop { background: #000a; }
+.sim-leave h2 { font-size: 20px; }
+.sim-leave p { line-height: 1.6; color: #b8c4d5; margin: 16px 0 24px; }
+.sim-leave-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.sim-leave-actions button { padding: 12px 16px; border-radius: 8px; }
+#sim-stay { background: var(--accent); color: #06150d; font-weight: 600; }
+#sim-leave-confirm { background: transparent; border: 1px solid #465064; color: var(--text); }
 .sim-capital p { color: #a3afc0; font-size: 12px; line-height: 1.6; margin: 12px 0 26px; }
 .sim-table-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
 .sim-main h2 { font-size: 15px; margin: 0; }

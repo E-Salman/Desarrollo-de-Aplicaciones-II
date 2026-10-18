@@ -7,7 +7,8 @@
     const fields = $('sim-fields'), status = $('sim-status');
     const endpoint = `${root.dataset.context}/api/portfolio/simulacion`;
     const limit = 1000000n; // Porcentajes con cuatro decimales: 100 %.
-    let saved = null, busy = false;
+    let saved = null, savedRaw = null, busy = false, allowNavigation = false;
+    let pendingDestination = null;
     const parse = (value, decimals) => {
         if (!new RegExp(`^\\d+(?:\\.\\d{1,${decimals}})?$`).test(value)) throw new Error('Revisá los valores: capital con hasta dos decimales y porcentajes con hasta cuatro.');
         const [integer, fraction = ''] = value.split('.');
@@ -26,10 +27,42 @@
         if (percentages.some(p => p > limit)) throw new Error('Cada porcentaje debe estar entre 0 y 100.');
         const sum = percentages.reduce((a, b) => a + b, 0n);
         if (sum > limit) throw new Error(`La distribución suma ${format(sum, 4)} %. Reducila hasta 100 % o menos.`);
-        return { capital, c, percentages, sum,
+        return { capital, c, percentages, sum, moneda: $('sim-currency').value,
             porcentajes: Object.fromEntries(rows.map(row => [row.dataset.tipo, row.querySelector('input').value])) };
     };
-    const identity = plan => JSON.stringify([plan.c.toString(), plan.percentages.map(String)]);
+    const identity = plan => JSON.stringify([plan.moneda, plan.c.toString(), plan.percentages.map(String)]);
+    const rawIdentity = () => JSON.stringify([$('sim-currency').value, $('sim-capital').value,
+        rows.map(row => row.querySelector('input').value)]);
+    const pendingChanges = () => {
+        if (busy) return true;
+        if (saved === null) return false;
+        try { return identity(inputPlan()) !== saved; }
+        catch { return rawIdentity() !== savedRaw; }
+    };
+    window.addEventListener('beforeunload', event => {
+        if (!allowNavigation && pendingChanges()) { event.preventDefault(); event.returnValue = ''; }
+    });
+    document.addEventListener('click', event => {
+        const link = event.target.closest('a[href]');
+        if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey
+                || event.shiftKey || event.altKey || link.target === '_blank' || link.hasAttribute('download')) return;
+        const destination = new URL(link.href, window.location.href);
+        if (destination.pathname === window.location.pathname && destination.search === window.location.search && destination.hash) return;
+        if (!pendingChanges()) return;
+        event.preventDefault();
+        pendingDestination = link.href;
+        $('sim-leave-description').textContent = busy
+            ? 'Hay una operación en curso. Esperá a que termine para confirmar que el plan se aplicó.'
+            : 'Los cambios que todavía no aplicaste se perderán. Tu último plan aplicado seguirá disponible durante esta sesión.';
+        $('sim-leave').showModal();
+    });
+    $('sim-stay').addEventListener('click', () => { pendingDestination = null; $('sim-leave').close(); });
+    $('sim-leave').addEventListener('cancel', () => { pendingDestination = null; });
+    $('sim-leave-confirm').addEventListener('click', () => {
+        if (!pendingDestination) return;
+        allowNavigation = true;
+        window.location.assign(pendingDestination);
+    });
     const message = (text, error = false, success = false) => {
         for (const target of [status, $('sim-feedback')]) {
             target.textContent = text;
@@ -63,8 +96,8 @@
             $('sim-result-state').textContent = dirty ? 'Vista previa · cambios sin aplicar' : (applied ? '✓ Simulación aplicada' : 'Comenzá ingresando tu capital');
             $('sim-result-state').classList.toggle('sim-success', applied);
             $('sim-result').classList.remove('sim-invalid');
-            $('sim-total').textContent = format(plan.c, 2);
-            $('sim-remaining').textContent = format(plan.c * (limit - plan.sum), 8);
+            $('sim-total').textContent = `${plan.moneda} ${format(plan.c, 2)}`;
+            $('sim-remaining').textContent = `${plan.moneda} ${format(plan.c * (limit - plan.sum), 8)}`;
             $('sim-percent').textContent = `${format(limit - plan.sum, 4)} % disponible`;
             const breakdown = $('sim-breakdown'), bar = $('sim-bar');
             breakdown.replaceChildren(); bar.replaceChildren();
@@ -72,7 +105,7 @@
                 const term = document.createElement('dt'), value = document.createElement('dd');
                 term.textContent = `${row.dataset.nombre} · ${format(plan.percentages[index], 4)} %`;
                 term.dataset.tipo = row.dataset.tipo;
-                value.textContent = format(plan.c * plan.percentages[index], 8);
+                value.textContent = `${plan.moneda} ${format(plan.c * plan.percentages[index], 8)}`;
                 breakdown.append(term, value);
                 const segment = document.createElement('span');
                 segment.dataset.tipo = row.dataset.tipo;
@@ -102,11 +135,14 @@
         return response.status === 204 ? null : response.json();
     };
     const populate = dto => {
+        $('sim-currency').value = dto.moneda ?? 'ARS';
         $('sim-capital').value = dto.capital ?? 0;
         rows.forEach(row => { row.querySelector('input').value = dto.porcentajes?.[row.dataset.tipo] ?? 0; });
         saved = identity(inputPlan());
+        savedRaw = rawIdentity();
     };
     $('sim-form').addEventListener('input', () => { if (!busy) preview(); });
+    $('sim-currency').addEventListener('change', () => { if (!busy) preview(); });
     $('sim-form').addEventListener('submit', async event => {
         event.preventDefault();
         const plan = preview();
@@ -114,7 +150,7 @@
         busy = true; fields.disabled = true; buttonState('saving'); message('Aplicando simulación…');
         try {
             const dto = await read(`${endpoint}/plan`, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ capital: plan.capital, porcentajes: plan.porcentajes }) });
+                body: JSON.stringify({ capital: plan.capital, porcentajes: plan.porcentajes, moneda: plan.moneda }) });
             populate(dto);
             busy = false; preview(); message('✓ Simulación aplicada. Los resultados ya están disponibles. Tu cartera no cambió.', false, true);
         } catch (error) { message(error.message + ' Tus cambios siguen en el formulario; podés volver a intentar.', true); }

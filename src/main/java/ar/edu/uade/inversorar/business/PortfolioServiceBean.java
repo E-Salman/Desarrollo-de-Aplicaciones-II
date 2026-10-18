@@ -19,6 +19,7 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
     private final String conversacion = UUID.randomUUID().toString();
     // Sólo la planificación es conversacional; las posiciones se consultan en cada llamada.
     private BigDecimal capital = BigDecimal.ZERO;
+    private String monedaSimulacion = "ARS";
     private final Map<TipoInstrumento, BigDecimal> porcentajes = new EnumMap<>(TipoInstrumento.class);
     @Inject private PortfolioActual portfolioActual;
     @Inject private OperacionRepository operaciones;
@@ -44,6 +45,13 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
     }
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     public SimulacionDto definirPlan(BigDecimal nuevoCapital, Map<TipoInstrumento, BigDecimal> distribucion) {
+        return definirPlan(nuevoCapital, distribucion, monedaSimulacion);
+    }
+
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public SimulacionDto definirPlan(BigDecimal nuevoCapital, Map<TipoInstrumento, BigDecimal> distribucion, String moneda) {
+        if (!"ARS".equals(moneda) && !"USD".equals(moneda))
+            throw new ReglaNegocioException("La moneda de referencia debe ser ARS o USD");
         if (nuevoCapital == null || nuevoCapital.signum() < 0 || nuevoCapital.compareTo(new BigDecimal("999999999999.99")) > 0
                 || nuevoCapital.stripTrailingZeros().scale() > 2)
             throw new ReglaNegocioException("Capital inválido: máximo 999999999999.99 y dos decimales");
@@ -62,6 +70,7 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
             throw new ReglaNegocioException("La distribución supera 100%");
         // Validar el plan completo antes de modificar la conversación. No persiste operaciones.
         capital = nuevoCapital;
+        monedaSimulacion = moneda;
         porcentajes.clear();
         porcentajes.putAll(nuevoPlan);
         return calcularSimulacion();
@@ -70,6 +79,7 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     public SimulacionDto calcularSimulacion() {
         SimulacionDto dto = new SimulacionDto(); dto.capital = capital;
+        dto.moneda = monedaSimulacion;
         dto.porcentajes = new EnumMap<>(porcentajes); dto.importes = new EnumMap<>(TipoInstrumento.class);
         // Se conservan fracciones de centavo para que la suma nunca exceda el capital.
         porcentajes.forEach((tipo, valor) -> dto.importes.put(tipo, capital.multiply(valor).movePointLeft(2)));
@@ -78,7 +88,7 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
     }
 
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
-    public void reiniciarSimulacion() { porcentajes.clear(); capital = BigDecimal.ZERO; }
+    public void reiniciarSimulacion() { porcentajes.clear(); capital = BigDecimal.ZERO; monedaSimulacion = "ARS"; }
     @Remove @PermitAll
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     public void cerrar() { reiniciarSimulacion(); }
