@@ -31,6 +31,12 @@
 #sim-save { background: var(--accent); color: #06150d; flex: 1; }
 #sim-reset { background: transparent; border: 1px solid #465064; color: var(--text); }
 .sim-main button:disabled { opacity: .45; cursor: not-allowed; }
+#sim-save[data-state=applied]:disabled { opacity: 1; background: #123c2b; color: #92efbd; border: 1px solid #28734d; cursor: default; }
+#sim-save[data-state=saving]:disabled, #sim-save[data-state=resetting]:disabled { opacity: .8; cursor: progress; }
+#sim-save[data-state=empty]:disabled { cursor: default; }
+.sim-feedback { margin: 14px 0 0; font-size: 12px; line-height: 1.6; color: #b8c4d5; }
+#sim-status.sim-success, .sim-feedback.sim-success, .sim-result > p.sim-success { color: #92efbd; }
+.sim-feedback.sim-error { color: #ff929a; }
 .sim-result > p:first-of-type { color: #a3afc0; font-size: 12px; margin: 10px 0 28px; }
 .sim-total { display: flex; flex-direction: column; gap: 8px; }
 .sim-total > span, .sim-remaining > span { color: #a3afc0; font-size: 12px; }

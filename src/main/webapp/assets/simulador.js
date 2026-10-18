@@ -30,13 +30,38 @@
             porcentajes: Object.fromEntries(rows.map(row => [row.dataset.tipo, row.querySelector('input').value])) };
     };
     const identity = plan => JSON.stringify([plan.c.toString(), plan.percentages.map(String)]);
-    const message = (text, error = false) => { status.textContent = text; status.classList.toggle('sim-error', error); };
+    const message = (text, error = false, success = false) => {
+        for (const target of [status, $('sim-feedback')]) {
+            target.textContent = text;
+            target.classList.toggle('sim-error', error);
+            target.classList.toggle('sim-success', success);
+        }
+    };
+    const buttonState = state => {
+        const button = $('sim-save');
+        const states = {
+            ready: ['Aplicar simulación', false, 'Aplicar los cambios de este plan.'],
+            applied: ['Simulación aplicada ✓', true, 'El plan ya está aplicado. Cambiá un valor para simular de nuevo.'],
+            empty: ['Aplicar simulación', true, 'Ingresá el capital y la distribución para comenzar.'],
+            invalid: ['Revisá los valores', true, 'Corregí los valores indicados para continuar.'],
+            saving: ['Aplicando…', true, 'Guardando el plan de esta sesión.'],
+            resetting: ['Reiniciando…', true, 'Reiniciando el plan de esta sesión.']
+        };
+        const [label, disabled, title] = states[state];
+        button.textContent = label; button.disabled = disabled; button.title = title;
+        button.dataset.state = state;
+        button.setAttribute('aria-busy', String(state === 'saving' || state === 'resetting'));
+    };
+    const settledButton = plan => buttonState(saved !== identity(plan) ? 'ready'
+        : (plan.c > 0n || plan.sum > 0n ? 'applied' : 'empty'));
     const preview = () => {
         try {
             const plan = inputPlan();
             const dirty = saved !== identity(plan);
-            $('sim-save').disabled = busy || !dirty;
-            $('sim-result-state').textContent = dirty ? 'Vista previa · cambios sin aplicar' : 'Plan aplicado';
+            if (!busy) settledButton(plan);
+            const applied = !dirty && (plan.c > 0n || plan.sum > 0n);
+            $('sim-result-state').textContent = dirty ? 'Vista previa · cambios sin aplicar' : (applied ? '✓ Simulación aplicada' : 'Comenzá ingresando tu capital');
+            $('sim-result-state').classList.toggle('sim-success', applied);
             $('sim-result').classList.remove('sim-invalid');
             $('sim-total').textContent = format(plan.c, 2);
             $('sim-remaining').textContent = format(plan.c * (limit - plan.sum), 8);
@@ -54,10 +79,13 @@
                 segment.style.width = `${Number(plan.percentages[index]) / 10000}%`;
                 bar.append(segment);
             });
-            if (!busy) message(dirty ? 'Ajustá la distribución y aplicá el plan para conservarlo en esta sesión.' : 'Tu plan está actualizado.');
+            if (!busy) message(dirty ? 'Ajustá la distribución y aplicá el plan para conservarlo en esta sesión.'
+                : (applied ? '✓ Simulación aplicada. Los resultados ya están disponibles. Cambiá un valor para simular de nuevo.'
+                    : 'Ingresá el capital y los porcentajes para comenzar.'), false, applied);
             return plan;
         } catch (error) {
-            $('sim-save').disabled = true;
+            buttonState('invalid');
+            $('sim-result-state').classList.remove('sim-success');
             $('sim-result-state').textContent = 'Corregí los valores para actualizar la vista previa';
             $('sim-result').classList.add('sim-invalid');
             message(error.message, true);
@@ -83,24 +111,27 @@
         event.preventDefault();
         const plan = preview();
         if (!plan || busy) return;
-        busy = true; fields.disabled = true; message('Aplicando simulación…');
+        busy = true; fields.disabled = true; buttonState('saving'); message('Aplicando simulación…');
         try {
             const dto = await read(`${endpoint}/plan`, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ capital: plan.capital, porcentajes: plan.porcentajes }) });
             populate(dto);
-            busy = false; preview(); message('Simulación aplicada. Tu cartera no cambió.');
+            busy = false; preview(); message('✓ Simulación aplicada. Los resultados ya están disponibles. Tu cartera no cambió.', false, true);
         } catch (error) { message(error.message + ' Tus cambios siguen en el formulario; podés volver a intentar.', true); }
-        finally { busy = false; fields.disabled = false; $('sim-save').disabled = saved === identity(plan); }
+        finally { busy = false; fields.disabled = false; settledButton(plan); }
     });
     $('sim-reset').addEventListener('click', async () => {
         if (busy) return;
-        busy = true; fields.disabled = true; message('Reiniciando simulación…');
+        busy = true; fields.disabled = true; buttonState('resetting'); message('Reiniciando simulación…');
         try {
             await read(endpoint, { method: 'DELETE' });
             populate({ capital: 0, porcentajes: {} });
             busy = false; preview(); message('Simulación reiniciada. Tu cartera no cambió.');
         } catch (error) { message(error.message, true); }
-        finally { busy = false; fields.disabled = false; }
+        finally {
+            busy = false; fields.disabled = false;
+            try { settledButton(inputPlan()); } catch { buttonState('invalid'); }
+        }
     });
     // El catálogo informa disponibilidad. No restringe la planificación a lo ya cargado.
     read(`${root.dataset.context}/api/instrumentos`).then(items => {

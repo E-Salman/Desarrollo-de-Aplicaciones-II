@@ -60,6 +60,7 @@
                 <% } %>
                 </div>
                 <div class="sim-actions"><button type="submit" id="sim-save">Aplicar simulación</button><button type="button" id="sim-reset">Reiniciar</button></div>
+                <p id="sim-feedback" class="sim-feedback"></p>
             </fieldset>
         </form>
         <aside class="sim-result" id="sim-result" aria-label="Resultado de la simulación">
