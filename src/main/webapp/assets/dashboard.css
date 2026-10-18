@@ -718,3 +718,69 @@ a.nav-button.active:visited {
     color: #001c0e;
     font-weight: 700;
 }
+/* =========================
+   DISTRIBUCION PORTFOLIO
+   ========================= */
+
+.distribucion-panel {
+    margin-bottom: 16px;
+}
+
+.distribucion-contenido {
+    padding: 20px;
+}
+
+.grafico-contenedor {
+    position: relative;
+    width: 190px;
+    height: 190px;
+    margin: 0 auto 22px;
+}
+
+.distribucion-leyenda {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.distribucion-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.distribucion-nombre {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+}
+
+.distribucion-color {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.distribucion-porcentaje {
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.distribucion-vacia {
+    padding: 12px 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+@media (max-width: 650px) {
+    .grafico-contenedor {
+        width: 165px;
+        height: 165px;
+    }
+}

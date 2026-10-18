@@ -5,6 +5,154 @@
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const numero = n => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 10 }).format(n);
   const money = (n, m) => n == null ? "Sin dato" : numero(n) + " " + (m || "(moneda sin identificar)");
+  // =========================
+// DISTRIBUCION PORTFOLIO
+// =========================
+
+let graficoDistribucion = null;
+
+const categorias = {
+    ACCION: { nombre: "Acción", color: "#00e87a" },
+    CRIPTO: { nombre: "Cripto", color: "#6366f1" },
+    BONO: { nombre: "Bono", color: "#f59e0b" },
+    CEDEAR: { nombre: "CEDEAR", color: "#ec4899" },
+    MONEDA: { nombre: "Moneda", color: "#94a3b8" }
+};
+
+function renderDistribucion(posiciones) {
+
+    const leyenda = $("leyendaDistribucion");
+    const canvas = $("graficoDistribucion");
+
+    if (graficoDistribucion) {
+        graficoDistribucion.destroy();
+        graficoDistribucion = null;
+    }
+
+    leyenda.innerHTML = "";
+
+    // Solo considerar posiciones con valor actual positivo
+    const validas = posiciones.filter(p =>
+        p.actual != null &&
+        Number.isFinite(Number(p.actual)) &&
+        Number(p.actual) > 0
+    );
+
+    if (validas.length === 0) {
+        leyenda.innerHTML =
+            '<p class="distribucion-vacia">Todavía no hay inversiones.</p>';
+        return;
+    }
+
+    // No sumar importes de diferentes monedas sin convertirlos
+    const monedas = new Set(validas.map(p => p.moneda));
+
+    if (monedas.size !== 1 || monedas.has(null) || monedas.has("")) {
+        leyenda.innerHTML =
+            '<p class="distribucion-vacia">' +
+            'Para calcular la distribución es necesario ' +
+            'convertir las inversiones a una moneda común.' +
+            '</p>';
+        return;
+    }
+
+    // Agrupar las inversiones por tipo
+    const totales = {};
+
+    validas.forEach(p => {
+        const tipo = String(p.tipo || "").toUpperCase();
+
+        if (!totales[tipo]) {
+            totales[tipo] = 0;
+        }
+
+        totales[tipo] += Number(p.actual);
+    });
+
+    const totalPortfolio = Object.values(totales)
+        .reduce((acumulado, valor) => acumulado + valor, 0);
+
+    const tipos = Object.keys(totales);
+
+    const nombres = tipos.map(tipo =>
+        categorias[tipo]?.nombre || tipo
+    );
+
+    const colores = tipos.map(tipo =>
+        categorias[tipo]?.color || "#64748b"
+    );
+
+    const valores = tipos.map(tipo => totales[tipo]);
+
+    // Crear gráfico de dona
+    graficoDistribucion = new Chart(canvas, {
+        type: "doughnut",
+
+        data: {
+            labels: nombres,
+            datasets: [{
+                data: valores,
+                backgroundColor: colores,
+                borderColor: "#111318",
+                borderWidth: 2,
+                hoverOffset: 5
+            }]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "65%",
+
+            plugins: {
+                legend: {
+                    display: false
+                },
+
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const porcentaje =
+                                (context.parsed / totalPortfolio) * 100;
+
+                            return context.label + ": " +
+                                porcentaje.toFixed(1) + "%";
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Crear leyenda con porcentajes
+    tipos.forEach((tipo, index) => {
+
+        const porcentaje =
+            (totales[tipo] / totalPortfolio) * 100;
+
+        const item = document.createElement("div");
+        item.className = "distribucion-item";
+
+        const nombre = document.createElement("div");
+        nombre.className = "distribucion-nombre";
+
+        const color = document.createElement("span");
+        color.className = "distribucion-color";
+        color.style.backgroundColor = colores[index];
+
+        const texto = document.createElement("span");
+        texto.textContent = nombres[index];
+
+        nombre.append(color, texto);
+
+        const valor = document.createElement("span");
+        valor.className = "distribucion-porcentaje";
+        valor.textContent = porcentaje.toFixed(1) + "%";
+
+        item.append(nombre, valor);
+        leyenda.appendChild(item);
+    });
+}
   async function api(path, options) {
     const response = await fetch(ctx + "/api" + path, options);
     if (!response.ok) {
@@ -21,6 +169,7 @@
   function actualizarTotalVenta() { $("totalVenta").value = money(dec($("cantidadVenta").value) * dec($("precioVenta").value), monedaVenta); }
   function renderResumen(r) {
     ultimoResumen = r;
+    renderDistribucion(r.posiciones);
     for (const [id, campo] of [["capital", "capitalInvertido"], ["patrimonio", "patrimonioTotal"], ["ganancia", "gananciaTotal"]])
       $(id).textContent = money(r[campo], r.moneda);
     $("posiciones").innerHTML = r.posiciones.length ? r.posiciones.map(p =>
@@ -156,13 +305,31 @@
     finally { boton.disabled = false; }
   };
 
-  async function iniciar() {
+
+async function iniciar() {
+
     mysql = (await api("/catalogo/configuracion")).mysql;
-    $("origen").textContent = mysql ? "Valuación según el último cierre histórico disponible; no son precios en vivo." : "Portfolio de demostración";
-    await Promise.all([cargarInstrumentos(), api("/portfolio/resumen").then(renderResumen)]);
+
+    $("origen").textContent = mysql
+        ? "Valuación según el último cierre histórico disponible; no son precios en vivo."
+        : "Portfolio de demostración";
+
+    await Promise.all([
+        cargarInstrumentos(),
+        api("/portfolio/resumen").then(renderResumen)
+    ]);
+
     $("abrirCatalogo").hidden = !mysql;
     $("abrirModal").disabled = false;
     $("abrirModalVenta").disabled = false;
-  }
-  iniciar().catch(e => { $("posiciones").textContent = e.message; });
+
+    // Detectar si venimos de otra pestaña
+
+}
+
+iniciar().catch(e => {
+    $("posiciones").textContent = e.message;
+});
+
 })();
+

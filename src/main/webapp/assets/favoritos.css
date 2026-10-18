@@ -1,0 +1,331 @@
+
+/* =========================
+   FAVORITOS - INVERSORAR
+   ========================= */
+
+.favoritos-main {
+    max-width: 1100px;
+    margin: 28px auto;
+    padding: 0 16px;
+}
+
+/* ENCABEZADO */
+
+.favoritos-header {
+    margin-bottom: 22px;
+}
+
+.favoritos-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.favoritos-header .sub {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* BUSCADOR PRINCIPAL */
+
+.buscador-agregar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 0 14px;
+    margin-bottom: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.buscador-agregar:focus-within {
+    border-color: var(--accent);
+}
+
+.buscador-icono {
+    color: var(--muted);
+    font-size: 23px;
+}
+
+#buscarFavorito {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 13px 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+}
+
+#buscarFavorito:focus {
+    border: none;
+    outline: none;
+}
+
+#buscarFavorito::placeholder {
+    color: var(--muted);
+}
+
+/* RESULTADOS DE BUSQUEDA */
+
+#resultadosBusqueda {
+    margin-bottom: 28px;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+#resultadosBusqueda:empty {
+    display: none;
+}
+
+/* SECCION TUS FAVORITOS */
+
+.favoritos-seccion {
+    margin-bottom: 28px;
+}
+
+.favoritos-titulo-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.seccion-titulo {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* BUSCADOR DE FAVORITOS */
+
+.filtro-favoritos {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#filtrarFavoritos {
+    width: 190px;
+    margin: 0;
+    padding: 8px 10px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+#filtrarFavoritos:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+#filtrarFavoritos[hidden] {
+    display: none;
+}
+
+.boton-lupa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.boton-lupa:hover,
+.boton-lupa.activo {
+    background: var(--surface2);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* LISTA DE INSTRUMENTOS */
+
+#listaFavoritos {
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.favorito-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 74px;
+    padding: 15px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: none;
+}
+
+.favorito-item:first-child {
+    border-radius: 10px 10px 0 0;
+}
+
+.favorito-item:last-child {
+    border-bottom: 1px solid var(--border);
+    border-radius: 0 0 10px 10px;
+}
+
+.favorito-item:only-child {
+    border-radius: 10px;
+}
+
+/* ESTRELLAS */
+
+.favorito-estrella {
+    flex-shrink: 0;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s ease,
+                transform 0.15s ease;
+}
+
+.favorito-estrella.activo {
+    color: #fbbf24;
+}
+
+.favorito-estrella:hover {
+    color: #fbbf24;
+    transform: scale(1.1);
+}
+
+/* INFORMACION DEL INSTRUMENTO */
+
+.favorito-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.favorito-nombre {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.favorito-detalles {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.favorito-tipo {
+    padding: 4px 7px;
+    background: #063d27;
+    color: var(--accent);
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.favorito-en-cartera {
+    padding: 4px 7px;
+    color: var(--accent);
+    background: #063d27;
+    border-radius: 5px;
+    font-size: 10px;
+}
+
+/* PRECIO Y RENDIMIENTO */
+
+.favorito-precio {
+    flex-shrink: 0;
+    text-align: right;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.favorito-posicion {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.favorito-posicion.positivo {
+    color: var(--accent);
+}
+
+.favorito-posicion.negativo {
+    color: var(--danger);
+}
+
+/* MENSAJES */
+
+.favoritos-mensaje {
+    margin: 0;
+    padding: 20px;
+    background: var(--surface);
+    color: var(--muted);
+    text-align: center;
+    font-size: 12px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 650px) {
+
+    .favoritos-main {
+        margin: 18px auto;
+        padding: 0 12px;
+    }
+
+    .favoritos-header h1 {
+        font-size: 21px;
+    }
+
+    .favorito-item {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .favorito-nombre {
+        font-size: 12px;
+    }
+
+    .favorito-precio {
+        font-size: 11px;
+    }
+
+    .favorito-detalles {
+        font-size: 10px;
+    }
+
+    #filtrarFavoritos {
+        width: 140px;
+    }
+
+    .boton-lupa {
+        width: 32px;
+        height: 32px;
+    }
+}
