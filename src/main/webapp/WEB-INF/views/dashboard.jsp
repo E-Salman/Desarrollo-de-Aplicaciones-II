@@ -1,536 +1,362 @@
-<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 
-<!DOCTYPE html>
-<html lang="es">
+    <% request.setAttribute("activePage", "dashboard" ); %>
 
-<head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+        <!DOCTYPE html>
+        <html lang="es">
 
-    <title>InversorAR</title>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link
-        rel="stylesheet"
-        href="<%= request.getContextPath() %>/assets/dashboard.css"
-    >
-</head>
+            <title>InversorAR</title>
 
-<body>
+            <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css">
+        </head>
 
-<header>
+        <body>
+            <jsp:include page="/WEB-INF/jspf/navbar.jsp" />
 
-    <div class="brand">
-        <span>✓</span>
-        InversorAR
-    </div>
+            <main>
 
-    <nav>
-        Dashboard　 Portfolio　 Rendimiento　 Historial　 Simulador
-    </nav>
+                <h1>Mi Portfolio</h1>
 
-    <div class="header-derecha">
-
-        <button
-            type="button"
-            id="abrirModal"
-            disabled
-        >
-            ＋ Comprar
-        </button>
-
-        <button type="button" id="abrirModalVenta" disabled>
-            − Vender
-        </button>
-
-        <details class="usuario-menu">
-
-            <summary
-                class="usuario-boton"
-                aria-label="Abrir menú de usuario"
-            >
-
-                <svg
-                    width="17"
-                    height="17"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <circle cx="12" cy="8" r="4"></circle>
-                    <path d="M4 21a8 8 0 0 1 16 0"></path>
-                </svg>
-
-                <svg
-                    class="usuario-flecha"
-                    width="11"
-                    height="11"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="m6 9 6 6 6-6"></path>
-                </svg>
-
-            </summary>
-
-            <div class="usuario-dropdown">
-
-                <a
-                    href="#"
-                    class="menu-opcion"
-                >
-                    Configuración
-                </a>
-
-                <div class="menu-separador"></div>
-
-                <form method="post" action="<%= request.getContextPath() %>/logout">
-                    <input type="hidden" name="csrf" value="${sessionScope.csrf}">
-                    <button type="submit" class="menu-opcion cerrar-sesion">Cerrar sesión</button>
-                </form>
-
-            </div>
-
-        </details>
-
-    </div>
-
-</header>
+                <p class="sub" id="origen">
+                    Cargando…
+                </p>
 
 
-<main>
+                <section class="metricas">
 
-    <h1>Mi Portfolio</h1>
+                    <article>
+                        <small>CAPITAL INVERTIDO</small>
+                        <strong id="capital">—</strong>
+                    </article>
 
-    <p
-        class="sub"
-        id="origen"
-    >
-        Cargando…
-    </p>
+                    <article>
+                        <small>PATRIMONIO TOTAL</small>
+                        <strong id="patrimonio">—</strong>
+                    </article>
 
+                    <article>
+                        <small>GANANCIA TOTAL</small>
+                        <strong id="ganancia">—</strong>
+                    </article>
 
-    <section class="metricas">
-
-        <article>
-            <small>CAPITAL INVERTIDO</small>
-            <strong id="capital">—</strong>
-        </article>
-
-        <article>
-            <small>PATRIMONIO TOTAL</small>
-            <strong id="patrimonio">—</strong>
-        </article>
-
-        <article>
-            <small>GANANCIA TOTAL</small>
-            <strong id="ganancia">—</strong>
-        </article>
-
-    </section>
+                </section>
 
 
-    <div id="totalesMoneda"></div>
+                <div id="totalesMoneda"></div>
 
 
-    <section class="panel">
+                <section class="panel">
 
-        <h2>Mis inversiones</h2>
+                    <h2>Mis inversiones</h2>
 
-        <div
-            id="posiciones"
-            class="posiciones"
-        >
-            <p>Cargando inversiones…</p>
-        </div>
+                    <div id="posiciones" class="posiciones">
+                        <p>Cargando inversiones…</p>
+                    </div>
 
-    </section>
+                </section>
 
-</main>
+            </main>
 
 
-<!-- =========================
+            <!-- =========================
      CATALOGO DE INSTRUMENTOS
      ========================= -->
 
-<dialog
-    id="catalogoPanel"
-    class="panel catalogo"
-    aria-labelledby="tituloCatalogo"
->
+            <dialog id="catalogoPanel" class="panel catalogo" aria-labelledby="tituloCatalogo">
 
-    <div class="modalTitulo">
+                <div class="modalTitulo">
 
-        <h2 id="tituloCatalogo">
-            Elegí un instrumento
-        </h2>
+                    <h2 id="tituloCatalogo">
+                        Elegí un instrumento
+                    </h2>
 
-        <button
-            id="cerrarCatalogo"
-            class="cerrar"
-            aria-label="Cerrar catálogo"
-        >
-            ×
-        </button>
+                    <button id="cerrarCatalogo" class="cerrar" aria-label="Cerrar catálogo">
+                        ×
+                    </button>
 
-    </div>
+                </div>
 
 
-    <p class="aviso">
-        Precios históricos de la base compartida.
-        Los instrumentos sin precio o sin moneda identificada
-        se pueden consultar, pero no comprar.
-    </p>
+                <p class="aviso">
+                    Precios históricos de la base compartida.
+                    Los instrumentos sin precio o sin moneda identificada
+                    se pueden consultar, pero no comprar.
+                </p>
 
 
-    <form
-        id="busquedaCatalogo"
-        class="buscador"
-    >
+                <form id="busquedaCatalogo" class="buscador">
 
-        <label>
-            Nombre o símbolo
+                    <label>
+                        Nombre o símbolo
 
-            <input
-                id="buscar"
-                maxlength="80"
-                placeholder="BTCUSDT, Ethereum…"
-            >
-        </label>
+                        <input id="buscar" maxlength="80" placeholder="BTCUSDT, Ethereum…">
+                    </label>
 
-        <button class="secundario">
-            Buscar
-        </button>
+                    <button class="secundario">
+                        Buscar
+                    </button>
 
-    </form>
+                </form>
 
 
-    <p
-        id="catalogoError"
-        class="error"
-        role="alert"
-    ></p>
+                <p id="catalogoError" class="error" role="alert"></p>
 
 
-    <div class="tabla">
+                <div class="tabla">
 
-        <table>
+                    <table>
 
-            <thead>
-                <tr>
-                    <th>Instrumento</th>
-                    <th>Último cierre</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
+                        <thead>
+                            <tr>
+                                <th>Instrumento</th>
+                                <th>Último cierre</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
 
-            <tbody id="catalogoFilas"></tbody>
+                        <tbody id="catalogoFilas"></tbody>
 
-        </table>
+                    </table>
 
-    </div>
-
-
-    <div class="paginacion">
-
-        <button
-            id="anterior"
-            class="secundario"
-        >
-            Anterior
-        </button>
-
-        <span id="pagina"></span>
-
-        <button
-            id="siguiente"
-            class="secundario"
-        >
-            Siguiente
-        </button>
-
-    </div>
-
-</dialog>
+                </div>
 
 
-<!-- =========================
+                <div class="paginacion">
+
+                    <button id="anterior" class="secundario">
+                        Anterior
+                    </button>
+
+                    <span id="pagina"></span>
+
+                    <button id="siguiente" class="secundario">
+                        Siguiente
+                    </button>
+
+                </div>
+
+            </dialog>
+
+
+            <!-- =========================
      HISTORIAL
      ========================= -->
 
-<dialog id="historial">
+            <dialog id="historial">
 
-    <div class="modalTitulo">
+                <div class="modalTitulo">
 
-        <h2 id="tituloHistorial">
-            Historial
-        </h2>
+                    <h2 id="tituloHistorial">
+                        Historial
+                    </h2>
 
-        <button
-            id="cerrarHistorial"
-            class="cerrar"
-            aria-label="Cerrar historial"
-        >
-            ×
-        </button>
+                    <button id="cerrarHistorial" class="cerrar" aria-label="Cerrar historial">
+                        ×
+                    </button>
 
-    </div>
+                </div>
 
 
-    <p class="aviso">
-        Hasta 90 registros, del más reciente al más antiguo.
-    </p>
+                <p class="aviso">
+                    Hasta 90 registros, del más reciente al más antiguo.
+                </p>
 
 
-    <div class="tabla">
+                <div class="tabla">
 
-        <table>
+                    <table>
 
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Cierre</th>
-                    <th>Volumen</th>
-                </tr>
-            </thead>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cierre</th>
+                                <th>Volumen</th>
+                            </tr>
+                        </thead>
 
-            <tbody id="historialFilas"></tbody>
+                        <tbody id="historialFilas"></tbody>
 
-        </table>
+                    </table>
 
-    </div>
+                </div>
 
-</dialog>
+            </dialog>
 
 
-<!-- =========================
+            <!-- =========================
      MODAL COMPRA
      ========================= -->
 
-<dialog id="modal">
+            <dialog id="modal">
 
-    <form id="formCompra">
+                <form id="formCompra">
 
-        <div class="modalTitulo">
+                    <div class="modalTitulo">
 
-            <h2>
-                Comprar instrumento
-            </h2>
+                        <h2>
+                            Comprar instrumento
+                        </h2>
 
-            <button
-                type="button"
-                id="cerrarModal"
-                class="cerrar"
-            >
-                ×
-            </button>
+                        <button type="button" id="cerrarModal" class="cerrar">
+                            ×
+                        </button>
 
-        </div>
+                    </div>
 
 
-        <label>
-            Tipo de instrumento
+                    <label>
+                        Tipo de instrumento
 
-            <select id="tipoInstrumento">
+                        <select id="tipoInstrumento">
 
-                <option value="">
-                    Todos los tipos
-                </option>
+                            <option value="">
+                                Todos los tipos
+                            </option>
 
-                <option value="ACCION">
-                    Acciones
-                </option>
+                            <option value="ACCION">
+                                Acciones
+                            </option>
 
-                <option value="BONO">
-                    Bonos
-                </option>
+                            <option value="BONO">
+                                Bonos
+                            </option>
 
-                <option value="CEDEAR">
-                    CEDEARs
-                </option>
+                            <option value="CEDEAR">
+                                CEDEARs
+                            </option>
 
-                <option value="CRIPTO">
-                    Criptomonedas
-                </option>
+                            <option value="CRIPTO">
+                                Criptomonedas
+                            </option>
 
-                <option value="MONEDA">
-                    Monedas
-                </option>
+                            <option value="MONEDA">
+                                Monedas
+                            </option>
 
-            </select>
+                        </select>
 
-        </label>
-
-
-        <label>
-            Instrumento
-
-            <select
-                id="instrumento"
-                required
-            >
-                <option value="">
-                    Seleccioná un instrumento…
-                </option>
-            </select>
-
-        </label>
+                    </label>
 
 
-        <p
-            id="disponibilidadTipo"
-            class="sub"
-            role="status"
-        ></p>
+                    <label>
+                        Instrumento
+
+                        <select id="instrumento" required>
+                            <option value="">
+                                Seleccioná un instrumento…
+                            </option>
+                        </select>
+
+                    </label>
 
 
-        <button
-            type="button"
-            id="abrirCatalogo"
-            class="enlace"
-            hidden
-        >
-            Consultar precios e historial
-        </button>
+                    <p id="disponibilidadTipo" class="sub" role="status"></p>
 
 
-        <div class="dos">
-
-            <label>
-                Ticker
-
-                <input
-                    id="ticker"
-                    readonly
-                >
-            </label>
+                    <button type="button" id="abrirCatalogo" class="enlace" hidden>
+                        Consultar precios e historial
+                    </button>
 
 
-            <label>
-                Cantidad
+                    <div class="dos">
 
-                <input
-                    id="cantidad"
-                    type="number"
-                    min="0"
-                    step="any"
-                    required
-                >
-            </label>
+                        <label>
+                            Ticker
 
-        </div>
+                            <input id="ticker" readonly>
+                        </label>
 
 
-        <div class="dos">
+                        <label>
+                            Cantidad
 
-            <label>
-                Precio por unidad
-                <span id="monedaCompra"></span>
+                            <input id="cantidad" type="number" min="0" step="any" required>
+                        </label>
 
-                <input
-                    id="precio"
-                    type="number"
-                    min="0"
-                    step="any"
-                    required
-                >
-            </label>
+                    </div>
 
 
-            <label>
-                Total invertido
+                    <div class="dos">
 
-                <input
-                    id="total"
-                    readonly
-                >
-            </label>
+                        <label>
+                            Precio por unidad
+                            <span id="monedaCompra"></span>
 
-        </div>
+                            <input id="precio" type="number" min="0" step="any" required>
+                        </label>
 
 
-        <p
-            id="referenciaPrecio"
-            class="aviso"
-        ></p>
+                        <label>
+                            Total invertido
+
+                            <input id="total" readonly>
+                        </label>
+
+                    </div>
 
 
-        <label>
-            Fecha de compra
-
-            <input
-                id="fecha"
-                type="date"
-                required
-            >
-        </label>
+                    <p id="referenciaPrecio" class="aviso"></p>
 
 
-        <p
-            id="error"
-            class="error"
-            role="alert"
-        ></p>
+                    <label>
+                        Fecha de compra
+
+                        <input id="fecha" type="date" required>
+                    </label>
 
 
-        <button
-            id="guardarCompra"
-            class="comprar"
-            type="submit"
-        >
-            Agregar al portfolio
-        </button>
-
-    </form>
-
-</dialog>
+                    <p id="error" class="error" role="alert"></p>
 
 
-<dialog id="modalVenta" aria-labelledby="tituloVenta">
-    <form id="formVenta">
-        <div class="modalTitulo">
-            <h2 id="tituloVenta">Vender instrumento</h2>
-            <button type="button" id="cerrarModalVenta" class="cerrar" aria-label="Cerrar venta">×</button>
-        </div>
-        <p id="disponibilidadVenta" class="sub" role="status"></p>
-        <label>Instrumento de tu portfolio
-            <select id="instrumentoVenta" required>
-                <option value="">Seleccioná un instrumento…</option>
-            </select>
-        </label>
-        <div class="dos">
-            <label>Ticker <input id="tickerVenta" readonly></label>
-            <label>Cantidad <button type="button" id="venderTodo" class="enlace">Vender todo</button>
-                <input id="cantidadVenta" type="number" min="0" step="any" required>
-            </label>
-        </div>
-        <div class="dos">
-            <label>Precio por unidad <span id="monedaVenta"></span>
-                <input id="precioVenta" type="number" min="0" step="any" required>
-            </label>
-            <label>Total de la venta <input id="totalVenta" readonly></label>
-        </div>
-        <label>Fecha de venta <input id="fechaVenta" type="date" required></label>
-        <p id="errorVenta" class="error" role="alert"></p>
-        <button id="guardarVenta" class="comprar" type="submit" disabled>Registrar venta</button>
-    </form>
-</dialog>
+                    <button id="guardarCompra" class="comprar" type="submit">
+                        Agregar al portfolio
+                    </button>
 
-<script>
-    window.APP_CONTEXT = '<%= request.getContextPath() %>';
-</script>
+                </form>
 
-<script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20260914-ventas"></script>
+            </dialog>
 
-</body>
 
-</html>
+            <dialog id="modalVenta" aria-labelledby="tituloVenta">
+                <form id="formVenta">
+                    <div class="modalTitulo">
+                        <h2 id="tituloVenta">Vender instrumento</h2>
+                        <button type="button" id="cerrarModalVenta" class="cerrar" aria-label="Cerrar venta">×</button>
+                    </div>
+                    <p id="disponibilidadVenta" class="sub" role="status"></p>
+                    <label>Instrumento de tu portfolio
+                        <select id="instrumentoVenta" required>
+                            <option value="">Seleccioná un instrumento…</option>
+                        </select>
+                    </label>
+                    <div class="dos">
+                        <label>Ticker <input id="tickerVenta" readonly></label>
+                        <label>Cantidad <button type="button" id="venderTodo" class="enlace">Vender todo</button>
+                            <input id="cantidadVenta" type="number" min="0" step="any" required>
+                        </label>
+                    </div>
+                    <div class="dos">
+                        <label>Precio por unidad <span id="monedaVenta"></span>
+                            <input id="precioVenta" type="number" min="0" step="any" required>
+                        </label>
+                        <label>Total de la venta <input id="totalVenta" readonly></label>
+                    </div>
+                    <label>Fecha de venta <input id="fechaVenta" type="date" required></label>
+                    <p id="errorVenta" class="error" role="alert"></p>
+                    <button id="guardarVenta" class="comprar" type="submit" disabled>Registrar venta</button>
+                </form>
+            </dialog>
+
+            <script>
+                window.APP_CONTEXT = '<%= request.getContextPath() %>';
+            </script>
+
+            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20260914-ventas"></script>
+
+        </body>
+
+        </html>

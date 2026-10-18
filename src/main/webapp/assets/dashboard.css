@@ -51,7 +51,7 @@ header {
     font-weight: 700;
 }
 
-.brand span {
+.brand-icon {
     display: inline-grid;
     place-items: center;
     width: 21px;
@@ -62,16 +62,55 @@ header {
     border-radius: 5px;
 }
 
-
 /* NAVEGACION */
 
+
+/* =========================
+   BOTONES DE NAVEGACION
+   ========================= */
+
 nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     flex: 1;
-    text-align: center;
+    min-width: 0;
     color: var(--muted);
     font-size: 12px;
     white-space: nowrap;
 }
+
+.nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 12px;
+    border-radius: 5px;
+    color: var(--muted);
+    background: transparent;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-button:hover {
+    background: var(--surface2);
+    color: var(--text);
+}
+
+.nav-button.active {
+    background: var(--accent);
+    color: #001c0e;
+    font-weight: 700;
+}
+
+.nav-button.active:hover {
+    filter: brightness(0.95);
+}
+
+
 
 
 /* =========================
@@ -122,7 +161,7 @@ nav {
     position: relative;
     display: block;
     flex: 0 0 42px;
-    width: 42px;
+    width: auto; padding: 0 10px;
     height: 34px;
     margin: 0;
     padding: 0;
@@ -151,7 +190,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
+    width: auto; padding: 0 10px;
     height: 34px;
     margin: 0;
     padding: 0;
@@ -186,7 +225,7 @@ nav {
 
 .usuario-dropdown {
     position: absolute;
-    top: 42px;
+    top: calc(100% + 6px);
     right: 0;
     width: 170px;
     padding: 5px;
@@ -289,7 +328,7 @@ small {
     letter-spacing: 1px;
 }
 
-strong {
+.metricas strong {
     display: block;
     margin-top: 6px;
     font: 600 18px 'DM Mono', monospace;
@@ -435,7 +474,7 @@ input[readonly] {
     max-height: 85vh;
 }
 
-.catalogo > .modalTitulo {
+.catalogo>.modalTitulo {
     margin: 0;
     padding: 14px;
     border-bottom: 1px solid var(--border);
@@ -558,9 +597,93 @@ button:disabled {
 }
 
 
+/* Header */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 64px;
+    height: auto;
+    padding: 10px 24px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Navigation container */
+.app-header .app-nav {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* Actual navigation buttons */
+.app-header .app-nav button.nav-button {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 38px;
+    padding: 0 16px;
+    margin: 0;
+
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+
+    cursor: pointer;
+    transition: background 0.15s ease,
+                color 0.15s ease,
+                border-color 0.15s ease;
+}
+
+.app-header .app-nav button.nav-button:hover {
+    background: var(--surface2);
+    color: var(--text);
+}
+
+.app-header .app-nav button.nav-button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #001c0e;
+    font-weight: 700;
+}
+
+.app-header .app-nav button.nav-button.active:hover {
+    filter: brightness(0.95);
+}
+
 /* =========================
    RESPONSIVE
    ========================= */
+@media (max-width: 800px) {
+    header {
+        height: auto;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+    .app-nav {
+        order: 3;
+        flex: 1 0 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+}
 
 @media (max-width: 800px) {
     nav {
@@ -576,4 +699,22 @@ button:disabled {
     .metricas {
         grid-template-columns: 1fr;
     }
+}
+
+a.nav-button,
+a.nav-button:visited {
+    color: var(--muted);
+    text-decoration: none;
+}
+
+a.nav-button:hover {
+    background: var(--surface2);
+    color: var(--text);
+}
+
+a.nav-button.active,
+a.nav-button.active:visited {
+    background: var(--accent);
+    color: #001c0e;
+    font-weight: 700;
 }

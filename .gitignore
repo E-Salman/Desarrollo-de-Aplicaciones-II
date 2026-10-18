@@ -32,3 +32,15 @@
 
 # Dump recibido: conservar los scripts versionados de config/*.sql
 /instrumentos.sql
+DB Alpha Vantage Price Importer.py
+DB Binance Importer Activos.py
+DB Binance Importer.py
+DB Binance Importer Instrumentos.py
+DB name populator.py
+DB Import NASDAQ.py
+coingeckolist.json
+asset_matching_report.json
+standalone.bat - Shortcut.lnk
+Mvn & move war - Copy.bat
+Mvn & move war.bat
+Run Wildfly.bat
