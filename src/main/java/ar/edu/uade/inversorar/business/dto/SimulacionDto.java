@@ -3,6 +3,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 import ar.edu.uade.inversorar.data.TipoInstrumento;
 public class SimulacionDto {
+    public String moneda;
     public BigDecimal capital;
     public BigDecimal disponible;
     public Map<TipoInstrumento, BigDecimal> porcentajes;

@@ -9,6 +9,8 @@ import ar.edu.uade.inversorar.data.TipoInstrumento;
     List<PosicionDto> obtenerPosiciones();
     void definirCapital(BigDecimal capital);
     void definirPorcentaje(TipoInstrumento tipo, BigDecimal porcentaje);
+    SimulacionDto definirPlan(BigDecimal capital, java.util.Map<TipoInstrumento, BigDecimal> porcentajes);
+    SimulacionDto definirPlan(BigDecimal capital, java.util.Map<TipoInstrumento, BigDecimal> porcentajes, String moneda);
     SimulacionDto calcularSimulacion();
     void reiniciarSimulacion();
     void cerrar();
