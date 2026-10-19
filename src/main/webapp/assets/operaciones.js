@@ -119,8 +119,15 @@
 
         const tipo = $("tipoCompraCompartido").value;
 
+        // "Favoritos": los tickers marcados en la pantalla Favoritos (guardados en el navegador).
+        const favoritos = tipo === "FAVORITOS"
+            ? tickersFavoritos()
+            : null;
+
         const disponibles = instrumentos.filter(i =>
-            !tipo || i.tipo === tipo
+            favoritos
+                ? favoritos.has(i.ticker)
+                : !tipo || i.tipo === tipo
         );
 
         const select = $("instrumentoCompraCompartido");
@@ -161,9 +168,29 @@
         $("disponibilidadCompraCompartida").textContent =
             disponibles.length
                 ? ""
-                : "No hay instrumentos de este tipo.";
+                : favoritos
+                    ? "Todavía no marcaste favoritos. Se agregan desde la pantalla Favoritos."
+                    : "No hay instrumentos de este tipo.";
 
         seleccionarCompra();
+    }
+
+    function tickersFavoritos() {
+
+        try {
+            const datos = JSON.parse(
+                localStorage.getItem("inversorar-favoritos-demo") || "[]"
+            );
+
+            return new Set(
+                Array.isArray(datos)
+                    ? datos.filter(t => typeof t === "string")
+                    : []
+            );
+
+        } catch {
+            return new Set();
+        }
     }
 
     function seleccionarCompra() {

@@ -58,6 +58,24 @@ class ComponentesTest {
         assertEquals("USD", r.moneda);
         igual("15", r.capitalInvertido); igual("30", r.patrimonioTotal);
     }
+    @Test void cadaPosicionTraeSuValorEnUsdParaElGraficoDeDistribucion() throws Exception {
+        var cat = new Instrumento("A 1000CAT/USDC", "1000CATUSDC", TipoInstrumento.CRIPTO, n("0.5"));
+        cat.actualizarCotizacion(n("0.5"), "USDC", "2026-10-18 00:00:00");
+        var xyz = new Instrumento("B Cripto rara", "ETHXYZ", TipoInstrumento.CRIPTO, n("2"));
+        xyz.actualizarCotizacion(n("2"), "XYZ", "2026-10-18 00:00:00");
+        var btc = new Instrumento("C ETH/BTC", "ETHBTC", TipoInstrumento.CRIPTO, n("0.03"));
+        btc.actualizarCotizacion(n("0.03"), "BTC", "2026-10-18 00:00:00");
+        var bean = portfolio();
+        var config = mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
+        var catalogoMercado = mock(CatalogoMercadoRepository.class); when(catalogoMercado.tasaAUsd("XYZ")).thenReturn(n("5"));
+        inyectar(bean, "configuracion", config); inyectar(bean, "catalogo", catalogoMercado);
+        var r = bean.consolidar(List.of(new Operacion(cartera, cat, n("200"), n("0.4"), LocalDate.now()),
+                new Operacion(cartera, xyz, n("3"), n("1"), LocalDate.now()), new Operacion(cartera, btc, n("2"), n("0.02"), LocalDate.now())));
+        igual("100", r.posiciones.get(0).actualUsd);   // stablecoin: 200 × 0,5 USDC = 100 USD
+        igual("30", r.posiciones.get(1).actualUsd);    // por el catálogo: 3 × 2 XYZ × 5 = 30 USD
+        assertNull(r.posiciones.get(2).actualUsd);     // BTC sin conversión: queda afuera del gráfico
+        igual("130", r.patrimonioTotal);               // mismos valores que el patrimonio total
+    }
     @Test void compraSinMonedaNoPersiste() throws Exception {
         var repo = mock(OperacionRepository.class); var bean = compraBean(repo);
         apple.actualizarCotizacion(n("195"), null, null);

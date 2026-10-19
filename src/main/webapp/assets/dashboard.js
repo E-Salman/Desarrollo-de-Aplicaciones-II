@@ -31,28 +31,20 @@ function renderDistribucion(posiciones) {
 
     leyenda.innerHTML = "";
 
-    // Solo considerar posiciones con valor actual positivo
-    const validas = posiciones.filter(p =>
-        p.actual != null &&
-        Number.isFinite(Number(p.actual)) &&
-        Number(p.actual) > 0
+    // Cada posición viene en su moneda de cotización (USDT, USDC, BTC...); para sumarlas se usa
+    // actualUsd, convertido por el servidor con la misma tasa que el patrimonio total.
+    const conValor = posiciones.filter(p => Number(p.actual) > 0);
+    const validas = conValor.filter(p =>
+        p.actualUsd != null &&
+        Number.isFinite(Number(p.actualUsd)) &&
+        Number(p.actualUsd) > 0
     );
+    const sinConversion = conValor.length - validas.length;
 
     if (validas.length === 0) {
-        leyenda.innerHTML =
-            '<p class="distribucion-vacia">Todavía no hay inversiones.</p>';
-        return;
-    }
-
-    // No sumar importes de diferentes monedas sin convertirlos
-    const monedas = new Set(validas.map(p => p.moneda));
-
-    if (monedas.size !== 1 || monedas.has(null) || monedas.has("")) {
-        leyenda.innerHTML =
-            '<p class="distribucion-vacia">' +
-            'Para calcular la distribución es necesario ' +
-            'convertir las inversiones a una moneda común.' +
-            '</p>';
+        leyenda.innerHTML = conValor.length
+            ? '<p class="distribucion-vacia">Ninguna posición tiene conversión a USD para calcular la distribución.</p>'
+            : '<p class="distribucion-vacia">Todavía no hay inversiones.</p>';
         return;
     }
 
@@ -66,7 +58,7 @@ function renderDistribucion(posiciones) {
             totales[tipo] = 0;
         }
 
-        totales[tipo] += Number(p.actual);
+        totales[tipo] += Number(p.actualUsd);
     });
 
     const totalPortfolio = Object.values(totales)
@@ -152,6 +144,13 @@ function renderDistribucion(posiciones) {
         item.append(nombre, valor);
         leyenda.appendChild(item);
     });
+
+    if (sinConversion > 0) {
+        const nota = document.createElement("p");
+        nota.className = "distribucion-vacia";
+        nota.textContent = "No incluye " + sinConversion + (sinConversion === 1 ? " posición" : " posiciones") + " sin conversión a USD.";
+        leyenda.appendChild(nota);
+    }
 }
   async function pedir(path, options) {
     const response = await fetch(ctx + "/api" + path, options);
@@ -185,9 +184,17 @@ function renderDistribucion(posiciones) {
     instrumentos = await api("/instrumentos");
     renderInstrumentos();
   }
+  // Tickers marcados en la pantalla Favoritos (favoritos.js los guarda en el navegador).
+  function tickersFavoritos() {
+    try {
+      const datos = JSON.parse(localStorage.getItem("inversorar-favoritos-demo") || "[]");
+      return new Set(Array.isArray(datos) ? datos.filter(t => typeof t === "string") : []);
+    } catch { return new Set(); }
+  }
   function renderInstrumentos() {
     const tipo = $("tipoInstrumento").value;
-    const disponibles = instrumentos.filter(i => !tipo || i.tipo === tipo);
+    const favoritos = tipo === "FAVORITOS" ? tickersFavoritos() : null;
+    const disponibles = instrumentos.filter(i => favoritos ? favoritos.has(i.ticker) : !tipo || i.tipo === tipo);
     const select = $("instrumento"); select.replaceChildren(new Option("Seleccioná un instrumento…", ""));
     const grupos = new Map();
     for (const i of disponibles) {
@@ -199,7 +206,9 @@ function renderDistribucion(posiciones) {
       const option = new Option(i.nombre + " (" + i.ticker + ")" + (disponible ? "" : " — datos incompletos"), i.ticker);
       option.disabled = !disponible; grupos.get(i.tipo).appendChild(option);
     }
-    $("disponibilidadTipo").textContent = disponibles.length ? "" : "Todavía no hay instrumentos de este tipo cargados.";
+    $("disponibilidadTipo").textContent = disponibles.length ? "" : favoritos
+      ? "Todavía no marcaste favoritos. Se agregan desde la pantalla Favoritos."
+      : "Todavía no hay instrumentos de este tipo cargados.";
     select.disabled = !disponibles.length;
     seleccionar();
   }

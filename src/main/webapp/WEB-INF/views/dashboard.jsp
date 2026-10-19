@@ -261,6 +261,10 @@
                                 Todos los tipos
                             </option>
 
+                            <option value="FAVORITOS">
+                                Favoritos
+                            </option>
+
                             <option value="ACCION">
                                 Acciones
                             </option>
@@ -399,7 +403,7 @@
                 window.APP_CONTEXT = '<%= request.getContextPath() %>';
             </script>
             <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20261018-distribucion"></script>
+            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20261019-distribucion-usd"></script>
 
         </body>
 

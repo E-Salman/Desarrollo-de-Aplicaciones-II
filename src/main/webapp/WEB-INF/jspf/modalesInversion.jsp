@@ -28,6 +28,7 @@
             <select id="tipoCompraCompartido">
 
                 <option value="">Todos los tipos</option>
+                <option value="FAVORITOS">Favoritos</option>
                 <option value="ACCION">Acciones</option>
                 <option value="BONO">Bonos</option>
                 <option value="CEDEAR">CEDEARs</option>
@@ -241,5 +242,5 @@
 </dialog>
 
 <script defer
-        src="<%= request.getContextPath() %>/assets/operaciones.js?v=1">
+        src="<%= request.getContextPath() %>/assets/operaciones.js?v=20261019-favoritos">
 </script>

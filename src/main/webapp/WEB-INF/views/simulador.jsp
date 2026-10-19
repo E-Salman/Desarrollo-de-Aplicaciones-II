@@ -28,7 +28,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador - InversorAR</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css">
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css?v=20261018-distribucion">
     <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/simulador.css">
     <script defer src="<%= request.getContextPath() %>/assets/simulador.js"></script>
 </head>
