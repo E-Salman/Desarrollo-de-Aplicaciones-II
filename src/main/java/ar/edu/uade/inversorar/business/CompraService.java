@@ -10,7 +10,8 @@ import java.util.List;
 public interface CompraService {
     List<ar.edu.uade.inversorar.business.dto.InstrumentoMercado> listarCatalogo(String busqueda, int pagina);
     List<ar.edu.uade.inversorar.business.dto.PrecioMercado> preciosHistoricos(long id, int limite);
-    void registrarCompra(CompraRequest request);
+    /** Con MySQL deja la orden PENDIENTE en la cola y la devuelve; en la demo H2 la registra en el momento y devuelve null. */
+    ar.edu.uade.inversorar.business.dto.OrdenDto registrarCompra(CompraRequest request);
     List<InstrumentoDto> listarInstrumentos();
 
 }

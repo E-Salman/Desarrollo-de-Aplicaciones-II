@@ -3,6 +3,8 @@ package ar.edu.uade.inversorar.business;
 import ar.edu.uade.inversorar.data.*;
 import ar.edu.uade.inversorar.business.dto.CompraRequest;
 import ar.edu.uade.inversorar.business.dto.InstrumentoDto;
+import ar.edu.uade.inversorar.business.dto.OrdenDto;
+import ar.edu.uade.inversorar.mensajeria.ProductorOrdenes;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -35,10 +37,11 @@ public class CompraServiceBean implements CompraService {
     @Inject private PortfolioActual portfolioActual;
     @Inject private OperacionRepository operaciones;
     @Inject private OrdenRepository ordenes;
+    @Inject private ProductorOrdenes productor;
 
     @Override
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public void registrarCompra(CompraRequest request) {
+    public OrdenDto registrarCompra(CompraRequest request) {
         if (request == null || request.ticker == null || request.ticker.isBlank()) throw new ReglaNegocioException("Debe seleccionar un instrumento.");
         if (request.cantidad == null || request.cantidad.signum() <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor que cero.");
         if (request.precioUnitario == null || request.precioUnitario.signum() <= 0) throw new ReglaNegocioException("El precio unitario debe ser mayor que cero.");
@@ -53,13 +56,17 @@ public class CompraServiceBean implements CompraService {
         if (instrumento.getCotizacionActual() == null || instrumento.getMonedaCotizacion() == null)
             throw new ReglaNegocioException("El instrumento no tiene precio o moneda de cotización para valorizar la compra.");
         Portfolio portfolio = portfolioActual.obtener();
-        Operacion operacion = new Operacion(portfolio, instrumento, request.cantidad, request.precioUnitario, request.fecha);
         if (configuracion != null && configuracion.catalogoMysql()) {
             if (portfolio.getUsuarioId() == null)
                 throw new ReglaNegocioException("La cuenta todavía no está vinculada a un usuario para registrar órdenes.");
-            operacion.vincularOrden(ordenes.guardarCompra(operacion));
+            // La orden queda PENDIENTE y su mensaje sale en la misma transacción; la operación la crea el Ejecutor.
+            OrdenDetalle detalle = ordenes.crearPendiente(portfolio.getUsuarioId(), TipoOperacion.COMPRA, instrumento,
+                    request.cantidad, request.precioUnitario, request.fecha);
+            productor.enviar(detalle.getOrden(), detalle);
+            return OrdenDto.de(detalle);
         }
-        operaciones.guardar(operacion);
+        operaciones.guardar(new Operacion(portfolio, instrumento, request.cantidad, request.precioUnitario, request.fecha));
+        return null;
     }
 
     @Override

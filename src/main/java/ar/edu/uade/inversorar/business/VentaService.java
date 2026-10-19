@@ -6,5 +6,6 @@ import jakarta.ejb.Local;
 
 @Local
 public interface VentaService {
-    void registrarVenta(VentaRequest request);
+    /** Con MySQL deja la orden PENDIENTE en la cola y la devuelve; en la demo H2 la registra en el momento y devuelve null. */
+    ar.edu.uade.inversorar.business.dto.OrdenDto registrarVenta(VentaRequest request);
 }

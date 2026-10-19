@@ -31,28 +31,20 @@ function renderDistribucion(posiciones) {
 
     leyenda.innerHTML = "";
 
-    // Solo considerar posiciones con valor actual positivo
-    const validas = posiciones.filter(p =>
-        p.actual != null &&
-        Number.isFinite(Number(p.actual)) &&
-        Number(p.actual) > 0
+    // Cada posición viene en su moneda de cotización (USDT, USDC, BTC...); para sumarlas se usa
+    // actualUsd, convertido por el servidor con la misma tasa que el patrimonio total.
+    const conValor = posiciones.filter(p => Number(p.actual) > 0);
+    const validas = conValor.filter(p =>
+        p.actualUsd != null &&
+        Number.isFinite(Number(p.actualUsd)) &&
+        Number(p.actualUsd) > 0
     );
+    const sinConversion = conValor.length - validas.length;
 
     if (validas.length === 0) {
-        leyenda.innerHTML =
-            '<p class="distribucion-vacia">Todavía no hay inversiones.</p>';
-        return;
-    }
-
-    // No sumar importes de diferentes monedas sin convertirlos
-    const monedas = new Set(validas.map(p => p.moneda));
-
-    if (monedas.size !== 1 || monedas.has(null) || monedas.has("")) {
-        leyenda.innerHTML =
-            '<p class="distribucion-vacia">' +
-            'Para calcular la distribución es necesario ' +
-            'convertir las inversiones a una moneda común.' +
-            '</p>';
+        leyenda.innerHTML = conValor.length
+            ? '<p class="distribucion-vacia">Ninguna posición tiene conversión a USD para calcular la distribución.</p>'
+            : '<p class="distribucion-vacia">Todavía no hay inversiones.</p>';
         return;
     }
 
@@ -66,7 +58,7 @@ function renderDistribucion(posiciones) {
             totales[tipo] = 0;
         }
 
-        totales[tipo] += Number(p.actual);
+        totales[tipo] += Number(p.actualUsd);
     });
 
     const totalPortfolio = Object.values(totales)
@@ -152,8 +144,15 @@ function renderDistribucion(posiciones) {
         item.append(nombre, valor);
         leyenda.appendChild(item);
     });
+
+    if (sinConversion > 0) {
+        const nota = document.createElement("p");
+        nota.className = "distribucion-vacia";
+        nota.textContent = "No incluye " + sinConversion + (sinConversion === 1 ? " posición" : " posiciones") + " sin conversión a USD.";
+        leyenda.appendChild(nota);
+    }
 }
-  async function api(path, options) {
+  async function pedir(path, options) {
     const response = await fetch(ctx + "/api" + path, options);
     if (!response.ok) {
       if (response.status === 401) {
@@ -163,8 +162,9 @@ function renderDistribucion(posiciones) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.mensaje || "No se pudo completar la operación (" + response.status + ").");
     }
-    return response.json();
+    return { status: response.status, body: await response.json() };
   }
+  const api = async (path, options) => (await pedir(path, options)).body;
   function actualizarTotal() { $("total").value = money(dec($("cantidad").value) * dec($("precio").value), moneda); }
   function actualizarTotalVenta() { $("totalVenta").value = money(dec($("cantidadVenta").value) * dec($("precioVenta").value), monedaVenta); }
   function renderResumen(r) {
@@ -184,9 +184,17 @@ function renderDistribucion(posiciones) {
     instrumentos = await api("/instrumentos");
     renderInstrumentos();
   }
+  // Tickers marcados en la pantalla Favoritos (favoritos.js los guarda en el navegador).
+  function tickersFavoritos() {
+    try {
+      const datos = JSON.parse(localStorage.getItem("inversorar-favoritos-demo") || "[]");
+      return new Set(Array.isArray(datos) ? datos.filter(t => typeof t === "string") : []);
+    } catch { return new Set(); }
+  }
   function renderInstrumentos() {
     const tipo = $("tipoInstrumento").value;
-    const disponibles = instrumentos.filter(i => !tipo || i.tipo === tipo);
+    const favoritos = tipo === "FAVORITOS" ? tickersFavoritos() : null;
+    const disponibles = instrumentos.filter(i => favoritos ? favoritos.has(i.ticker) : !tipo || i.tipo === tipo);
     const select = $("instrumento"); select.replaceChildren(new Option("Seleccioná un instrumento…", ""));
     const grupos = new Map();
     for (const i of disponibles) {
@@ -198,7 +206,9 @@ function renderDistribucion(posiciones) {
       const option = new Option(i.nombre + " (" + i.ticker + ")" + (disponible ? "" : " — datos incompletos"), i.ticker);
       option.disabled = !disponible; grupos.get(i.tipo).appendChild(option);
     }
-    $("disponibilidadTipo").textContent = disponibles.length ? "" : "Todavía no hay instrumentos de este tipo cargados.";
+    $("disponibilidadTipo").textContent = disponibles.length ? "" : favoritos
+      ? "Todavía no marcaste favoritos. Se agregan desde la pantalla Favoritos."
+      : "Todavía no hay instrumentos de este tipo cargados.";
     select.disabled = !disponibles.length;
     seleccionar();
   }
@@ -265,11 +275,92 @@ function renderDistribucion(posiciones) {
   $("formCompra").onsubmit = async e => {
     e.preventDefault(); const boton = $("guardarCompra"); boton.disabled = true; $("error").textContent = "";
     try {
-      const body = await api("/compras", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await pedir("/compras", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticker: $("ticker").value, cantidad: $("cantidad").value, precioUnitario: $("precio").value, fecha: $("fecha").value }) });
-      renderResumen(body); modal.close();
+      modal.close(); await ordenRegistrada(r);
     } catch(e) { $("error").textContent = e.message; }
     finally { boton.disabled = false; }
+  };
+
+  // ---- Órdenes por mensajería: 202 = la orden quedó en la cola y se ejecuta después ----
+  const estados = { PENDIENTE: "Pendiente", COMPLETADA: "Completada", RECHAZADA: "Rechazada", ERROR: "Error técnico", CANCELADA: "Cancelada", DESCARTADA: "Eliminada" };
+  const vistas = { pendientes: "PENDIENTE", completadas: "COMPLETADA", rechazadas: "RECHAZADA,ERROR" };
+  const vacias = { pendientes: "No tenés órdenes pendientes.", completadas: "Todavía no hay órdenes completadas.", rechazadas: "No tenés órdenes rechazadas." };
+  let vistaOrdenes = "pendientes", sondeo = null, sondeosRestantes = 0, pendientes = new Set();
+  const transacciones = $("transacciones");
+  async function ordenRegistrada(r) {
+    if (r.status !== 202) { renderResumen(r.body); return; }
+    const o = r.body;
+    avisar("Orden #" + o.id + " de " + (o.tipo === "VENTA" ? "venta" : "compra") + " enviada: queda pendiente hasta que se ejecute. La podés seguir en Transacciones.");
+    seguirPendientes([o.id]); await actualizarContadores();
+  }
+  function avisar(texto) { $("avisoOrden").textContent = texto; $("avisoOrden").hidden = false; }
+  function filaOrden(o) {
+    let acciones = "";
+    if (o.estado === "PENDIENTE") acciones = '<button class="secundario" data-cancelar="' + o.id + '">Cancelar</button>';
+    if (o.estado === "RECHAZADA" || o.estado === "ERROR") acciones = '<button class="secundario" data-reintentar="' + o.id + '">Enviar de nuevo</button>' +
+      '<button class="secundario" data-descartar="' + o.id + '">Eliminar</button>';
+    return '<article class="orden"><div><b>#' + o.id + ' · ' + (o.tipo === "VENTA" ? "Venta" : "Compra") + ' de ' + numero(o.cantidad) + ' ' + esc(o.ticker) +
+      '</b><small>' + esc(money(o.total, o.moneda)) + ' · fecha ' + esc(o.fechaOperacion || "") + '</small>' +
+      (o.motivo ? '<small class="motivo">' + esc(o.motivo) + '</small>' : "") +
+      '</div><div class="acciones-orden"><span class="estado estado-' + o.estado.toLowerCase() + '">' + (estados[o.estado] || esc(o.estado)) + '</span>' + acciones + '</div></article>';
+  }
+  async function cargarVista() {
+    const lista = await api("/ordenes?estado=" + encodeURIComponent(vistas[vistaOrdenes]) + "&limite=50");
+    $("ordenes").innerHTML = lista.length ? lista.map(filaOrden).join("") : "<p>" + vacias[vistaOrdenes] + "</p>";
+  }
+  function contador(id, n) { $(id).textContent = n; $(id).hidden = !n; }
+  // Contadores del botón y de las pestañas. Devuelve las pendientes.
+  async function actualizarContadores() {
+    const [pend, rech] = await Promise.all([api("/ordenes?estado=PENDIENTE&limite=100"), api("/ordenes?estado=" + encodeURIComponent("RECHAZADA,ERROR") + "&limite=100")]);
+    contador("cantidadPendientes", pend.length); contador("contadorPendientes", pend.length); contador("contadorRechazadas", rech.length);
+    return pend;
+  }
+  // Consulta cada 3 s mientras haya órdenes pendientes (hasta 2 minutos); al terminar alguna, refresca el portfolio.
+  function seguirPendientes(ids) {
+    ids.forEach(id => pendientes.add(id)); sondeosRestantes = 40;
+    if (!sondeo && pendientes.size) sondeo = setInterval(sondear, 3000);
+  }
+  async function sondear() {
+    try {
+      const siguen = new Set((await actualizarContadores()).map(o => o.id));
+      const terminaron = [...pendientes].some(id => !siguen.has(id));
+      pendientes = siguen;
+      if (terminaron) renderResumen(await api("/portfolio/resumen"));
+      if (transacciones.open) await cargarVista();
+    } catch (e) { /* un sondeo fallido no corta los siguientes */ }
+    if (!pendientes.size || --sondeosRestantes <= 0) { clearInterval(sondeo); sondeo = null; }
+  }
+  function mostrarVista(vista) {
+    vistaOrdenes = vista; $("errorOrdenes").textContent = "";
+    for (const tab of transacciones.querySelectorAll("[data-vista]")) {
+      tab.classList.toggle("activa", tab.dataset.vista === vista); tab.setAttribute("aria-selected", tab.dataset.vista === vista);
+    }
+    $("ordenes").innerHTML = "<p>Cargando…</p>";
+    cargarVista().catch(e => { $("errorOrdenes").textContent = e.message; });
+  }
+  for (const tab of transacciones.querySelectorAll("[data-vista]")) tab.onclick = () => mostrarVista(tab.dataset.vista);
+  // Al abrir, lo primero que se ve son las pendientes.
+  $("abrirTransacciones").onclick = e => {
+    e.currentTarget.closest("details")?.removeAttribute("open"); // cierra el menú de usuario
+    transacciones.showModal(); mostrarVista("pendientes"); actualizarContadores().catch(() => {});
+  };
+  $("cerrarTransacciones").onclick = () => transacciones.close();
+  $("ordenes").onclick = async e => {
+    const boton = e.target.closest("[data-cancelar], [data-reintentar], [data-descartar]"); if (!boton) return;
+    const { cancelar, reintentar, descartar } = boton.dataset;
+    if (cancelar && !confirm("¿Cancelar la orden #" + cancelar + "? No se va a ejecutar.")) return;
+    if (descartar && !confirm("¿Eliminar la orden #" + descartar + " de la lista?")) return;
+    boton.disabled = true; $("errorOrdenes").textContent = "";
+    try {
+      if (cancelar) { await api("/ordenes/" + cancelar + "/cancelar", { method: "POST" }); avisar("Orden #" + cancelar + " cancelada."); }
+      if (reintentar) {
+        await api("/ordenes/" + reintentar + "/reintentar", { method: "POST" });
+        avisar("Orden #" + reintentar + " enviada de nuevo: queda pendiente hasta que se ejecute."); seguirPendientes([Number(reintentar)]);
+      }
+      if (descartar) { await api("/ordenes/" + descartar + "/descartar", { method: "POST" }); avisar("Orden #" + descartar + " eliminada de la lista."); }
+      await Promise.all([cargarVista(), actualizarContadores()]);
+    } catch (err) { $("errorOrdenes").textContent = err.message; boton.disabled = false; }
   };
 
   function cargarSelectVenta() {
@@ -298,9 +389,9 @@ function renderDistribucion(posiciones) {
   $("formVenta").onsubmit = async e => {
     e.preventDefault(); const boton = $("guardarVenta"); boton.disabled = true; $("errorVenta").textContent = "";
     try {
-      const body = await api("/ventas", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await pedir("/ventas", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticker: $("tickerVenta").value, cantidad: $("cantidadVenta").value, precioUnitario: $("precioVenta").value, fecha: $("fechaVenta").value }) });
-      renderResumen(body); modalVenta.close();
+      modalVenta.close(); await ordenRegistrada(r);
     } catch(e) { $("errorVenta").textContent = e.message; }
     finally { boton.disabled = false; }
   };
@@ -322,14 +413,11 @@ async function iniciar() {
     $("abrirCatalogo").hidden = !mysql;
     $("abrirModal").disabled = false;
     $("abrirModalVenta").disabled = false;
-
-    // Detectar si venimos de otra pestaña
-
-}
-
-iniciar().catch(e => {
-    $("posiciones").textContent = e.message;
-});
-
+    if (mysql) {
+      $("abrirTransacciones").hidden = false;
+      seguirPendientes((await actualizarContadores()).map(o => o.id));
+    }
+  }
+  iniciar().catch(e => { $("posiciones").textContent = e.message; });
 })();
 

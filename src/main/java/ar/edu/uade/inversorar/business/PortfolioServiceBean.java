@@ -137,6 +137,7 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
             p.cantidad = cantidad; p.invertido = invertido; p.precioActual = precioActual;
             p.precioPromedio = p.invertido.divide(p.cantidad, 10, RoundingMode.HALF_UP);
             p.actual = p.cantidad.multiply(p.precioActual).setScale(10, RoundingMode.HALF_UP);
+            p.actualUsd = tasaUsd == null ? null : p.actual.multiply(tasaUsd).setScale(10, RoundingMode.HALF_UP);
             p.rendimiento = p.actual.subtract(p.invertido);
             p.rendimientoPorcentaje = porcentaje(p.rendimiento, p.invertido);
             posiciones.add(p);

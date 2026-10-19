@@ -9,4 +9,6 @@ public class PosicionDto {
     public BigDecimal precioActual; public BigDecimal rendimientoPorcentaje;
     public String nombre; public String ticker; public String tipo;
     public BigDecimal cantidad; public BigDecimal precioPromedio; public BigDecimal invertido; public BigDecimal actual; public BigDecimal rendimiento;
+    /** Valor actual convertido a USD con la misma tasa que el patrimonio total; null si la moneda no tiene conversión. */
+    public BigDecimal actualUsd;
 }

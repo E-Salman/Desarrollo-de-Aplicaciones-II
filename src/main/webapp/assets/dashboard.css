@@ -262,6 +262,15 @@ nav {
 
 .usuario-dropdown .cerrar-sesion {
     color: var(--danger);
+    text-align: left;
+    border: 0;
+    cursor: pointer;
+}
+
+/* El formulario de "Cerrar sesión" no lleva el relleno de los formularios de los modales. */
+.usuario-dropdown form {
+    margin: 0;
+    padding: 0;
 }
 
 
@@ -668,6 +677,150 @@ button:disabled {
 }
 
 /* =========================
+   ÓRDENES (mensajería)
+   ========================= */
+
+/* Opción "Transacciones" del menú de usuario, con el contador de pendientes a la derecha. */
+.usuario-dropdown #abrirTransacciones {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+    border: 0;
+    cursor: pointer;
+}
+
+.usuario-dropdown #abrirTransacciones[hidden] {
+    display: none;
+}
+
+#transacciones {
+    width: min(720px, calc(100vw - 32px));
+    max-height: 85vh;
+}
+
+.transacciones > .modalTitulo {
+    margin: 0;
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.transacciones h2 {
+    padding: 0;
+    border: 0;
+}
+
+.pestanias {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.pestania {
+    background: transparent;
+    color: var(--muted);
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 11px;
+}
+
+.pestania.activa {
+    background: var(--surface2);
+    color: var(--text);
+}
+
+.contador {
+    display: inline-block;
+    min-width: 16px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: var(--danger);
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.contador-pendientes {
+    background: #f2b84b;
+}
+
+.contador[hidden] {
+    display: none;
+}
+
+.aviso-orden {
+    margin: 0 0 14px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--accent);
+    background: var(--surface2);
+    font-size: 12px;
+}
+
+.ordenes {
+    max-height: 60vh;
+    overflow: auto;
+}
+
+.ordenes p {
+    padding: 14px;
+    color: var(--muted);
+}
+
+.orden {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.orden:last-child {
+    border-bottom: 0;
+}
+
+.orden b {
+    display: block;
+}
+
+.orden .motivo {
+    color: var(--danger);
+}
+
+.acciones-orden {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.estado {
+    padding: 3px 8px;
+    border-radius: 10px;
+    border: 1px solid currentColor;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.estado-pendiente { color: #f2b84b; }
+.estado-completada { color: var(--accent); }
+.estado-rechazada,
+.estado-error { color: var(--danger); }
+.estado-cancelada,
+.estado-descartada { color: var(--muted); }
+
+#errorOrdenes {
+    padding: 0 14px;
+}
+
+
+/* =========================
    RESPONSIVE
    ========================= */
 @media (max-width: 800px) {
@@ -698,6 +851,15 @@ button:disabled {
 
     .metricas {
         grid-template-columns: 1fr;
+    }
+
+    .orden {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .acciones-orden {
+        justify-content: flex-start;
     }
 }
 

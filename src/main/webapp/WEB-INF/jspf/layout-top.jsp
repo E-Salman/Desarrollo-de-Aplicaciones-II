@@ -11,6 +11,6 @@
 </head>
 <body>
 
-<jsp:include page="/WEB-INF/jspf/navbar.jspf"/>
+<jsp:include page="/WEB-INF/jspf/navbar.jsp"/>
 
 <main class="page-container">
