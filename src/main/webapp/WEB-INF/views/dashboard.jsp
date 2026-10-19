@@ -11,7 +11,7 @@
 
             <title>InversorAR</title>
 
-            <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css">
+            <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css?v=20261018-logout">
         </head>
 
         <body>
@@ -24,6 +24,8 @@
                 <p class="sub" id="origen">
                     Cargando…
                 </p>
+
+                <p id="avisoOrden" class="aviso-orden" role="status" hidden></p>
 
 
                 <section class="metricas">
@@ -60,6 +62,36 @@
                 </section>
 
             </main>
+
+
+            <!-- =========================
+     TRANSACCIONES (órdenes por mensajería); se abre desde el menú de usuario
+     ========================= -->
+
+            <dialog id="transacciones" class="panel transacciones" aria-labelledby="tituloTransacciones">
+
+                <div class="modalTitulo">
+                    <h2 id="tituloTransacciones">Transacciones</h2>
+                    <button type="button" id="cerrarTransacciones" class="cerrar" aria-label="Cerrar transacciones">×</button>
+                </div>
+
+                <div class="pestanias" role="tablist" aria-label="Estado de las órdenes">
+                    <button type="button" class="pestania" role="tab" data-vista="pendientes">
+                        Pendientes <span id="contadorPendientes" class="contador contador-pendientes" hidden></span>
+                    </button>
+                    <button type="button" class="pestania" role="tab" data-vista="completadas">Completadas</button>
+                    <button type="button" class="pestania" role="tab" data-vista="rechazadas">
+                        Rechazadas <span id="contadorRechazadas" class="contador" hidden></span>
+                    </button>
+                </div>
+
+                <div id="ordenes" class="ordenes">
+                    <p>Cargando…</p>
+                </div>
+
+                <p id="errorOrdenes" class="error" role="alert"></p>
+
+            </dialog>
 
 
             <!-- =========================
@@ -355,7 +387,7 @@
                 window.APP_CONTEXT = '<%= request.getContextPath() %>';
             </script>
 
-            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20260914-ventas"></script>
+            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20261018-integracion"></script>
 
         </body>
 

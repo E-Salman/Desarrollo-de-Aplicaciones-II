@@ -28,8 +28,16 @@
 
                             <div class="usuario-dropdown">
                                 <a class="menu-opcion" href="<%= ctx %>/perfil.jsp">Mi perfil</a>
+                                <%-- Lo muestra dashboard.js cuando las órdenes van por mensajería (perfil MySQL). --%>
+                                <button type="button" id="abrirTransacciones" class="menu-opcion" hidden>
+                                    Transacciones <span id="cantidadPendientes" class="contador contador-pendientes" hidden></span>
+                                </button>
                                 <div class="menu-separador"></div>
-                                <a class="menu-opcion cerrar-sesion" href="<%= ctx %>/logout">Cerrar sesión</a>
+                                <%-- POST con el token CSRF de la sesión: LogoutServlet rechaza un GET o un pedido sin token. --%>
+                                <form method="post" action="<%= ctx %>/logout">
+                                    <input type="hidden" name="csrf" value="${sessionScope.csrf}">
+                                    <button type="submit" class="menu-opcion cerrar-sesion">Cerrar sesión</button>
+                                </form>
                             </div>
                         </details>
                     </div>

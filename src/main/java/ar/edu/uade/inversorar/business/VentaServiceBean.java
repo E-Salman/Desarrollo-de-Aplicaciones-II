@@ -1,7 +1,9 @@
 package ar.edu.uade.inversorar.business;
 
 import ar.edu.uade.inversorar.data.*;
+import ar.edu.uade.inversorar.business.dto.OrdenDto;
 import ar.edu.uade.inversorar.business.dto.VentaRequest;
+import ar.edu.uade.inversorar.mensajeria.ProductorOrdenes;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -20,10 +22,13 @@ public class VentaServiceBean implements VentaService {
     @Inject private InstrumentoRepository instrumentos;
     @Inject private PortfolioActual portfolioActual;
     @Inject private OperacionRepository operaciones;
+    @Inject private ConfiguracionApp configuracion;
+    @Inject private OrdenRepository ordenes;
+    @Inject private ProductorOrdenes productor;
 
     @Override
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public void registrarVenta(VentaRequest request) {
+    public OrdenDto registrarVenta(VentaRequest request) {
         if (request == null || request.ticker == null || request.ticker.isBlank()) throw new ReglaNegocioException("Debe seleccionar un instrumento.");
         if (request.cantidad == null || request.cantidad.signum() <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor que cero.");
         if (request.precioUnitario == null || request.precioUnitario.signum() <= 0) throw new ReglaNegocioException("El precio unitario debe ser mayor que cero.");
@@ -37,10 +42,29 @@ public class VentaServiceBean implements VentaService {
         List<Operacion> historial = operaciones.porPortfolioYTicker(portfolio.getId(), ticker);
         BigDecimal poseida = BigDecimal.ZERO;
         for (Operacion o : historial) poseida = o.getTipo() == TipoOperacion.VENTA ? poseida.subtract(o.getCantidad()) : poseida.add(o.getCantidad());
+        // Con mensajería esta validación es orientativa (avisa en el momento el caso obvio);
+        // la definitiva la hace el Ejecutor al ejecutar, porque otra venta pudo ejecutarse antes.
         if (poseida.signum() <= 0) throw new ReglaNegocioException("No tenés ese instrumento en tu portfolio.");
         if (request.cantidad.compareTo(poseida) > 0) throw new ReglaNegocioException("No podés vender más cantidad de la que tenés en cartera.");
+        if (configuracion != null && configuracion.catalogoMysql()) {
+            if (portfolio.getUsuarioId() == null)
+                throw new ReglaNegocioException("La cuenta todavía no está vinculada a un usuario para registrar órdenes.");
+            // Lo ya comprometido en ventas que todavía esperan en la cola no se puede volver a vender.
+            BigDecimal comprometida = ordenes.ventasPendientes(portfolio.getUsuarioId(), instrumento);
+            BigDecimal disponible = poseida.subtract(comprometida).max(BigDecimal.ZERO);
+            if (request.cantidad.compareTo(disponible) > 0)
+                throw new ReglaNegocioException("Tenés " + texto(poseida) + " de " + ticker + ", pero " + texto(comprometida)
+                        + " ya están en ventas pendientes: podés vender hasta " + texto(disponible) + ".");
+            OrdenDetalle detalle = ordenes.crearPendiente(portfolio.getUsuarioId(), TipoOperacion.VENTA, instrumento,
+                    request.cantidad, request.precioUnitario, request.fecha);
+            productor.enviar(detalle.getOrden(), detalle);
+            return OrdenDto.de(detalle);
+        }
         operaciones.guardar(new Operacion(portfolio, instrumento, TipoOperacion.VENTA, request.cantidad, request.precioUnitario, request.fecha));
+        return null;
     }
+
+    private static String texto(BigDecimal cantidad) { return cantidad.stripTrailingZeros().toPlainString(); }
 
     private void validarDecimal(BigDecimal valor, int escala, int enteros, String campo) {
         BigDecimal normal = valor.stripTrailingZeros();

@@ -3,7 +3,7 @@
 <%
     request.setAttribute("activePage", "portfolio");
 %>
-<jsp:include page="/WEB-INF/jspf/layout-top.jspf"/>
+<jsp:include page="/WEB-INF/jspf/layout-top.jsp"/>
 
 <h1>Portfolio</h1>
 

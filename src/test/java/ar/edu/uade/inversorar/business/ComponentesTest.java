@@ -94,21 +94,62 @@ class ComponentesTest {
         var captor=org.mockito.ArgumentCaptor.forClass(Operacion.class); verify(repo).guardar(captor.capture());
         igual("360",captor.getValue().getTotal()); assertSame(cartera,captor.getValue().getPortfolio());
     }
-    @Test void compraMysqlVinculaOrdenYMovimiento() throws Exception {
-        var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var bean=compraBean(repo);
+    @Test void compraMysqlDejaOrdenPendienteYEnviaMensajeSinCrearOperacion() throws Exception {
+        var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var productor=mock(ar.edu.uade.inversorar.mensajeria.ProductorOrdenes.class);
+        var bean=compraBean(repo);
         var config=mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
-        inyectar(bean,"configuracion",config); inyectar(bean,"ordenes",ordenes); inyectar(cartera,"usuarioId",42L);
-        when(ordenes.guardarCompra(any())).thenAnswer(invocacion -> {
-            Operacion o=invocacion.getArgument(0);
-            return new OrdenDetalle(new Orden(o.getPortfolio().getUsuarioId(),"USD",o.getTotal()),o);
-        });
-        bean.registrarCompra(request());
-        var captor=org.mockito.ArgumentCaptor.forClass(Operacion.class); verify(repo).guardar(captor.capture());
-        var o=captor.getValue(); assertNotNull(o.getOrdenDetalle());
-        assertEquals(42L,o.getOrdenDetalle().getOrden().getUsuarioId());
-        igual("360",o.getOrdenDetalle().getSubtotal()); igual("360",o.getOrdenDetalle().getOrden().getTotal());
-        igual("2",o.getOrdenDetalle().getCantidad()); igual("180",o.getOrdenDetalle().getPrecioUnitario());
-        var orden=org.mockito.Mockito.inOrder(ordenes,repo); orden.verify(ordenes).guardarCompra(o); orden.verify(repo).guardar(o);
+        inyectar(bean,"configuracion",config); inyectar(bean,"ordenes",ordenes); inyectar(bean,"productor",productor); inyectar(cartera,"usuarioId",42L);
+        var pendiente=Orden.pendiente(42L,TipoOperacion.COMPRA,LocalDate.now(),"USD",n("360"));
+        var detalle=new OrdenDetalle(pendiente,apple,n("2"),n("180"));
+        when(ordenes.crearPendiente(eq(42L),eq(TipoOperacion.COMPRA),same(apple),any(),any(),any())).thenReturn(detalle);
+        var dto=bean.registrarCompra(request());
+        assertEquals("PENDIENTE",dto.estado); assertEquals("COMPRA",dto.tipo); igual("360",dto.total); igual("360",detalle.getSubtotal());
+        var orden=inOrder(ordenes,productor); orden.verify(ordenes).crearPendiente(eq(42L),eq(TipoOperacion.COMPRA),same(apple),any(),any(),any());
+        orden.verify(productor).enviar(pendiente,detalle);
+        // La operación la crea el Ejecutor al consumir el mensaje, no la compra.
+        verifyNoInteractions(repo);
+    }
+    @Test void ventaMysqlDejaOrdenPendienteTrasLaPrevalidacion() throws Exception {
+        var bean=new VentaServiceBean(); var instrumentos=mock(InstrumentoRepository.class); var actual=mock(PortfolioActual.class);
+        var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var productor=mock(ar.edu.uade.inversorar.mensajeria.ProductorOrdenes.class);
+        var config=mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
+        when(instrumentos.buscarPorTicker("AAPL")).thenReturn(Optional.of(apple)); when(actual.obtener()).thenReturn(cartera);
+        inyectar(cartera,"id",5L); inyectar(cartera,"usuarioId",42L);
+        when(repo.porPortfolioYTicker(5L,"AAPL")).thenReturn(List.of(compra("10","180")));
+        for (var campo : Map.of("instrumentos",instrumentos,"portfolioActual",actual,"operaciones",repo,"configuracion",config,"ordenes",ordenes,"productor",productor).entrySet())
+            inyectar(bean,campo.getKey(),campo.getValue());
+        var pendiente=Orden.pendiente(42L,TipoOperacion.VENTA,LocalDate.now(),"USD",n("1900"));
+        var detalle=new OrdenDetalle(pendiente,apple,n("10"),n("190"));
+        when(ordenes.crearPendiente(eq(42L),eq(TipoOperacion.VENTA),same(apple),any(),any(),any())).thenReturn(detalle);
+        when(ordenes.ventasPendientes(42L,apple)).thenReturn(BigDecimal.ZERO);
+        var r=new ar.edu.uade.inversorar.business.dto.VentaRequest(); r.ticker="AAPL"; r.cantidad=n("10"); r.precioUnitario=n("190"); r.fecha=LocalDate.now();
+        assertEquals("PENDIENTE",bean.registrarVenta(r).estado);
+        verify(productor).enviar(pendiente,detalle); verify(repo,never()).guardar(any());
+        // La prevalidación sigue rechazando en el momento el caso obvio, sin crear orden.
+        var demasiado=new ar.edu.uade.inversorar.business.dto.VentaRequest(); demasiado.ticker="AAPL"; demasiado.cantidad=n("11"); demasiado.precioUnitario=n("190"); demasiado.fecha=LocalDate.now();
+        assertThrows(ReglaNegocioException.class,()->bean.registrarVenta(demasiado));
+        verify(ordenes,times(1)).crearPendiente(any(),any(),any(),any(),any(),any());
+    }
+    @Test void ventaMysqlDescuentaLasVentasQueSiguenPendientes() throws Exception {
+        // Tenés 96; ya hay 87 en una venta pendiente: vender 89 se rechaza en el momento, vender 9 se acepta.
+        var bean=new VentaServiceBean(); var instrumentos=mock(InstrumentoRepository.class); var actual=mock(PortfolioActual.class);
+        var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var productor=mock(ar.edu.uade.inversorar.mensajeria.ProductorOrdenes.class);
+        var config=mock(ConfiguracionApp.class); when(config.catalogoMysql()).thenReturn(true);
+        when(instrumentos.buscarPorTicker("AAPL")).thenReturn(Optional.of(apple)); when(actual.obtener()).thenReturn(cartera);
+        inyectar(cartera,"id",5L); inyectar(cartera,"usuarioId",42L);
+        when(repo.porPortfolioYTicker(5L,"AAPL")).thenReturn(List.of(compra("96","180")));
+        when(ordenes.ventasPendientes(42L,apple)).thenReturn(n("87"));
+        for (var campo : Map.of("instrumentos",instrumentos,"portfolioActual",actual,"operaciones",repo,"configuracion",config,"ordenes",ordenes,"productor",productor).entrySet())
+            inyectar(bean,campo.getKey(),campo.getValue());
+        var venta=new ar.edu.uade.inversorar.business.dto.VentaRequest(); venta.ticker="AAPL"; venta.precioUnitario=n("190"); venta.fecha=LocalDate.now();
+        venta.cantidad=n("89");
+        var e=assertThrows(ReglaNegocioException.class,()->bean.registrarVenta(venta));
+        assertTrue(e.getMessage().contains("podés vender hasta 9"),e.getMessage());
+        verify(ordenes,never()).crearPendiente(any(),any(),any(),any(),any(),any()); verifyNoInteractions(productor);
+        var pendiente=Orden.pendiente(42L,TipoOperacion.VENTA,LocalDate.now(),"USD",n("1710"));
+        when(ordenes.crearPendiente(eq(42L),eq(TipoOperacion.VENTA),same(apple),any(),any(),any())).thenReturn(new OrdenDetalle(pendiente,apple,n("9"),n("190")));
+        venta.cantidad=n("9");
+        assertEquals("PENDIENTE",bean.registrarVenta(venta).estado);
     }
     @Test void cuentaSinUsuarioNoGeneraOrdenNiMovimiento() throws Exception {
         var repo=mock(OperacionRepository.class); var ordenes=mock(OrdenRepository.class); var bean=compraBean(repo);

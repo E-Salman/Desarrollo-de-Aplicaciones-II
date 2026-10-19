@@ -26,15 +26,25 @@ public class CompraResource {
         // Validar la identidad de la conversación antes de persistir la compra.
         httpRequest.getSession(true);
         var portfolioService = portfolioSesion.servicio(httpRequest.getUserPrincipal().getName());
-        try { compraService.registrarCompra(request); return Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build(); }
+        try {
+            var orden = compraService.registrarCompra(request);
+            return orden != null ? aceptada(orden) : Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build();
+        }
         catch (ReglaNegocioException e) { return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorDto(e.getMessage())).build(); }
     }
     @POST @Path("ventas") @Consumes(MediaType.APPLICATION_JSON)
     public Response vender(VentaRequest request) {
         httpRequest.getSession(true);
         var portfolioService = portfolioSesion.servicio(httpRequest.getUserPrincipal().getName());
-        try { ventaService.registrarVenta(request); return Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build(); }
+        try {
+            var orden = ventaService.registrarVenta(request);
+            return orden != null ? aceptada(orden) : Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build();
+        }
         catch (ReglaNegocioException e) { return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorDto(e.getMessage())).build(); }
+    }
+    /** 202 Accepted: la orden quedó en la cola; su estado se consulta en /ordenes/{id}. */
+    private static Response aceptada(ar.edu.uade.inversorar.business.dto.OrdenDto orden) {
+        return Response.status(Response.Status.ACCEPTED).entity(orden).header("Location", "ordenes/" + orden.id).build();
     }
     public static class ErrorDto { public String mensaje; public ErrorDto(String mensaje) { this.mensaje = mensaje; } }
 }

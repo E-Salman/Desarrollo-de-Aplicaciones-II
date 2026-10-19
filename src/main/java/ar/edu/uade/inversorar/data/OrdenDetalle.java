@@ -18,8 +18,14 @@ public class OrdenDetalle {
         // Mismo importe de negocio, redondeado a diez decimales, en orden, detalle y movimiento.
         this.subtotal = operacion.getTotal();
     }
+    /** Detalle de una orden pendiente: la operación todavía no existe, la crea el Ejecutor. */
+    public OrdenDetalle(Orden orden, Instrumento instrumento, BigDecimal cantidad, BigDecimal precioUnitario) {
+        this.orden = orden; this.instrumento = instrumento; this.cantidad = cantidad; this.precioUnitario = precioUnitario;
+        this.subtotal = cantidad.multiply(precioUnitario).setScale(10, java.math.RoundingMode.HALF_UP);
+    }
     public Long getId() { return id; }
     public Orden getOrden() { return orden; }
+    public Instrumento getInstrumento() { return instrumento; }
     public BigDecimal getCantidad() { return cantidad; }
     public BigDecimal getPrecioUnitario() { return precioUnitario; }
     public BigDecimal getSubtotal() { return subtotal; }
