@@ -1,0 +1,211 @@
+
+/* =========================
+   OPERACIONES COMPARTIDAS
+   INVERSORAR
+   ========================= */
+
+:root {
+    --bg: #0a0b0e;
+    --surface: #111318;
+    --surface2: #1a1d24;
+    --border: #22262f;
+    --accent: #00e87a;
+    --text: #f4f7fb;
+    --muted: #8490a3;
+    --danger: #ff6b75;
+}
+
+/* BOTONES DEL NAVBAR */
+
+.header-derecha #abrirModal,
+.header-derecha #abrirModalVenta {
+    position: static;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: auto;
+    min-height: 34px;
+    margin: 0;
+    padding: 0 14px;
+
+    background: var(--accent);
+    color: #001c0e;
+
+    border: none;
+    border-radius: 5px;
+
+    font-family: Inter, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.header-derecha #abrirModal:hover,
+.header-derecha #abrirModalVenta:hover {
+    filter: brightness(0.95);
+}
+
+/* MODALES */
+
+.operacion-modal {
+    width: min(390px, calc(100vw - 32px));
+    max-height: 90vh;
+    padding: 0;
+
+    background: var(--surface);
+    color: var(--text);
+
+    border: 1px solid #303642;
+    border-radius: 10px;
+
+    box-shadow: 0 20px 80px #000;
+}
+
+.operacion-modal::backdrop {
+    background: rgba(0, 0, 0, 0.75);
+}
+
+.operacion-modal form {
+    padding: 16px;
+}
+
+.operacion-modal .modalTitulo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.operacion-modal h2 {
+    margin: 0;
+    padding: 0;
+    border: none;
+
+    color: var(--text);
+    font-size: 15px;
+}
+
+.operacion-modal .cerrar {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* CAMPOS */
+
+.operacion-modal label {
+    display: block;
+    margin: 9px 0;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.operacion-modal input,
+.operacion-modal select {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+    padding: 9px;
+
+    background: var(--surface2);
+    color: var(--text);
+
+    border: 1px solid var(--border);
+    border-radius: 5px;
+
+    font-family: Inter, Arial, sans-serif;
+    font-size: 13px;
+}
+
+.operacion-modal input:focus,
+.operacion-modal select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.operacion-modal input[readonly] {
+    color: #a5b0c2;
+}
+
+.operacion-modal .dos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* TEXTOS */
+
+.operacion-modal .sub {
+    margin: 8px 0;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.operacion-modal .aviso {
+    padding: 5px 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.operacion-modal .error {
+    min-height: 16px;
+    margin: 8px 0;
+    color: var(--danger);
+    font-size: 11px;
+}
+
+/* BOTON CONFIRMAR */
+
+.operacion-modal .comprar {
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 16px;
+
+    background: var(--accent);
+    color: #001c0e;
+
+    border: none;
+    border-radius: 5px;
+
+    font-family: Inter, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.operacion-modal .comprar:hover {
+    filter: brightness(0.95);
+}
+
+.operacion-modal button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.operacion-modal .enlace {
+    float: right;
+    padding: 0;
+
+    background: transparent;
+    color: var(--accent);
+
+    border: none;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+@media (max-width: 650px) {
+    .operacion-modal .dos {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}

@@ -11,7 +11,7 @@
 
             <title>InversorAR</title>
 
-            <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css?v=20261018-logout">
+            <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/dashboard.css?v=20261018-distribucion">
         </head>
 
         <body>
@@ -47,13 +47,25 @@
 
                 </section>
 
+<div id="totalesMoneda"></div>
 
-                <div id="totalesMoneda"></div>
+<section class="panel distribucion-panel">
+    <h2>Distribución</h2>
 
+    <div class="distribucion-contenido">
 
-                <section class="panel">
+        <div class="grafico-contenedor">
+            <canvas id="graficoDistribucion"></canvas>
+        </div>
 
-                    <h2>Mis inversiones</h2>
+        <div id="leyendaDistribucion" class="distribucion-leyenda">
+        </div>
+
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Mis inversiones</h2>
 
                     <div id="posiciones" class="posiciones">
                         <p>Cargando inversiones…</p>
@@ -386,8 +398,8 @@
             <script>
                 window.APP_CONTEXT = '<%= request.getContextPath() %>';
             </script>
-
-            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20261018-integracion"></script>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+            <script src="<%= request.getContextPath() %>/assets/dashboard.js?v=20261018-distribucion"></script>
 
         </body>
 
