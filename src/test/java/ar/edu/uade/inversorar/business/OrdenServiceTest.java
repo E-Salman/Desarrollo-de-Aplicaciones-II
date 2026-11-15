@@ -50,7 +50,7 @@ class OrdenServiceTest {
     }
     @Test void unaPendienteNoSeReenvia() {
         // Segundo clic: la orden ya está PENDIENTE y no se reenvía.
-        var e = assertThrows(ReglaNegocioException.class, () -> bean.reintentar(42L));
+        var e = assertThrows(TransicionOrdenInvalida.class, () -> bean.reintentar(42L));
         assertTrue(e.getMessage().contains("PENDIENTE"), e.getMessage());
         verifyNoInteractions(productor);
     }
@@ -58,7 +58,7 @@ class OrdenServiceTest {
         assertEquals("CANCELADA", bean.cancelar(42L).estado);
         verifyNoInteractions(productor);
         // Ya no está pendiente: un segundo intento se rechaza.
-        assertThrows(ReglaNegocioException.class, () -> bean.cancelar(42L));
+        assertThrows(TransicionOrdenInvalida.class, () -> bean.cancelar(42L));
     }
     @Test void eliminarNoReenvia() {
         orden.marcarError("Falla técnica al ejecutar");
@@ -78,7 +78,7 @@ class OrdenServiceTest {
     }
     @Test void laOrdenDeOtroUsuarioNoExiste() throws Exception {
         inyectar(orden, "usuarioId", 99L);
-        assertThrows(ReglaNegocioException.class, () -> bean.cancelar(42L));
+        assertThrows(OrdenNoEncontrada.class, () -> bean.cancelar(42L));
         assertTrue(bean.orden(42L).isEmpty());
         verifyNoInteractions(productor);
     }

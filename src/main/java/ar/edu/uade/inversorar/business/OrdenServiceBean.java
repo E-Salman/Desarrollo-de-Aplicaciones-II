@@ -39,8 +39,6 @@ public class OrdenServiceBean implements OrdenService {
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public OrdenDto cancelar(long ordenId) {
         Orden orden = propia(ordenId);
-        if (!orden.estaPendiente())
-            throw new ReglaNegocioException("Solo se puede cancelar una orden pendiente; la orden #" + ordenId + " está " + orden.getEstado() + ".");
         // El mensaje sigue en la cola: el Ejecutor lo va a recibir, verá la orden CANCELADA y lo descartará.
         orden.cancelar();
         LOG.info("Orden #" + ordenId + " cancelada por el usuario");
@@ -51,7 +49,8 @@ public class OrdenServiceBean implements OrdenService {
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public OrdenDto reintentar(long ordenId) {
         Portfolio portfolio = portfolio();
-        Orden orden = propiaFallida(ordenId, "enviar de nuevo");
+        Orden orden = propia(ordenId);
+        orden.validarReintento();
         OrdenDetalle detalle = ordenes.detalleDe(ordenId).orElseThrow();
         if (orden.getTipo() == TipoOperacion.VENTA) validarDisponible(portfolio, detalle);
         orden.reintentar();
@@ -64,7 +63,7 @@ public class OrdenServiceBean implements OrdenService {
     @Override
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public OrdenDto descartar(long ordenId) {
-        Orden orden = propiaFallida(ordenId, "eliminar");
+        Orden orden = propia(ordenId);
         orden.descartar();
         LOG.info("Orden #" + ordenId + " descartada por el usuario");
         return OrdenDto.de(ordenes.detalleDe(ordenId).orElseThrow());
@@ -86,14 +85,7 @@ public class OrdenServiceBean implements OrdenService {
     private Orden propia(long ordenId) {
         Long usuario = portfolio().getUsuarioId();
         return ordenes.bloquear(ordenId).filter(o -> usuario.equals(o.getUsuarioId()))
-                .orElseThrow(() -> new ReglaNegocioException("La orden no existe."));
-    }
-
-    private Orden propiaFallida(long ordenId, String accion) {
-        Orden orden = propia(ordenId);
-        if (!orden.fallo())
-            throw new ReglaNegocioException("Solo se puede " + accion + " una orden rechazada o con error; la orden #" + ordenId + " está " + orden.getEstado() + ".");
-        return orden;
+                .orElseThrow(OrdenNoEncontrada::new);
     }
 
     private Portfolio portfolio() {

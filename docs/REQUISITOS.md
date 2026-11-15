@@ -23,26 +23,14 @@
 - Una operación con orden vinculada no puede tener una moneda distinta a la moneda de cotización del instrumento.
 - Las entradas inválidas responden HTTP 400 con un mensaje para la interfaz; sin autenticación 401, sin rol 403.
 
-## Checklist contra la consigna
+## Segunda entrega parcial
 
-| Requisito | Estado y evidencia |
-|---|---|
-| Compra funcional en capas | Implementada: REST/dashboard, interfaz EJB stateless, validaciones y repositories |
-| Venta funcional en capas | Implementada: `VentaService`/`VentaServiceBean` (stateless), valida cantidad poseída, consolidada en `PortfolioService` |
-| Portfolio funcional en capas | Implementado: interfaz + EJB stateful por sesión (Service Facade), DTOs, REST y dashboard |
-| Tres componentes de entrega | Compra, Venta y Portfolio integrados a nivel de código; `mvn test` cubre Compra, Portfolio (con su simulación) y el catálogo MySQL/multi-moneda. Venta todavía no tiene test unitario propio ni una corrida de demo/smoke conjunta desplegada — ver [PRUEBAS.md](PRUEBAS.md) |
-| Al menos un stateless | `CompraServiceBean` y `VentaServiceBean` |
-| Al menos un stateful | `PortfolioServiceBean`, una instancia por sesión HTTP vía `PortfolioSesion` |
-| Inicialización/destrucción | Compra y Venta con `@PostConstruct`/`@PreDestroy` y logging; Portfolio con `@PostConstruct`/`@PreDestroy` (identificador de conversación) y cierre explícito por `@Remove` |
-| Patrones de diseño | Repository/DAO, Service Facade (`PortfolioService`), Strategy (`CotizacionStrategy`); ver [ARQUITECTURA.md](ARQUITECTURA.md) |
-| Autenticación y rol | `web.xml` BASIC + rol `USUARIO` y `@RolesAllowed` en los EJB; `PortfolioSesion` además valida que la sesión no cambie de identidad; login definitivo del equipo pendiente |
-| Transacciones | Compra y Venta con `TransactionAttribute.REQUIRED`; Portfolio usa `REQUIRED` en sus consultas y `NOT_SUPPORTED` en la planificación; `ReglaNegocioException` con `rollback=true` (incluye la orden vinculada en modo MySQL) |
-| MySQL | Datasource probado, catálogo e históricos del equipo disponibles y compras persistidas; órdenes y detalles enlazados al movimiento; relación de usuario explícita (`portfolios.usuario_id`) |
-| Documento de 5-8 páginas | `TECNICO.md` actualizado a esta organización; `TECNICO.pdf` corresponde a una versión anterior y no se considera vigente |
-| Demo y defensa | [PRUEBAS.md](PRUEBAS.md), [EVIDENCIA.md](EVIDENCIA.md) y [TECNICO.md](TECNICO.md) cubren Compra, Portfolio, su simulación y MySQL; falta sumar el caso de Venta a esa evidencia |
-
+La [guía de entrega del 16/11](ENTREGA_2.md) vincula cada criterio con su evidencia.
+La API de órdenes devuelve 202 al aceptar una orden para el broker en MySQL,
+404 si la orden no existe o pertenece a otro usuario, y 409 si el estado actual
+impide la transición. La autenticación exige JWT y el contenedor verifica el rol.
 La simulación es una funcionalidad de Portfolio, no otro componente. No se calcula riesgo ni rendimiento histórico de la simulación; tampoco hay precios en vivo ni pagos reales. El catálogo de demostración es ilustrativo; el catálogo MySQL usa los datos reales recibidos del equipo.
 
 ## Fuera de alcance
 
-Login definitivo del equipo, cotizaciones en tiempo real, historial completo del lado de la simulación y detalle por ticker más allá del histórico de precios quedan para instancias posteriores.
+Cotizaciones en tiempo real, historial completo del lado de la simulación y detalle por ticker más allá del histórico de precios quedan para instancias posteriores.

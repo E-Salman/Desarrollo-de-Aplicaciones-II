@@ -1,69 +1,111 @@
-# Decisiones técnicas de Compra y Portfolio
+# InversorAR — Segunda entrega parcial
 
-Estado de mysql_componente al 13 de septiembre de 2026. Este texto actualiza la arquitectura; el PDF anterior conservado en el repositorio es histórico. El Word del equipo debe reflejar estos cambios antes de la entrega.
+## 1. Alcance y arquitectura
 
-## Componentes de negocio
+### Objetivo de la entrega
 
-| Componente | EJB | Responsabilidad | Patrones aplicados |
-|---|---|---|---|
-| Compra | Stateless | Listar instrumentos y validar/registrar compras | Repository/DAO |
-| Portfolio | Stateful | Consultar posiciones y rendimientos, mantener un plan temporal de distribución | Service Facade, Repository/DAO y Strategy |
-| Venta (rama joaco, 88f85f5) | OperacionServiceBean Stateless; pendiente de integrar | Validar disponibilidad y registrar ventas | Repository/DAO y OperacionStrategy con VentaStrategy |
+InversorAR permite registrar compras y ventas de inversiones y consultar su efecto en la cartera personal. El flujo central de esta entrega es una orden que empieza en el dashboard, se acepta mediante la API, pasa por una cola real y termina en una posición actualizada. Las operaciones registran inversiones declaradas por el usuario. El catálogo MySQL aporta instrumentos y precios históricos.
 
-La simulación es una función de Portfolio. No existe un SimuladorPortfolioServiceBean independiente. Los recursos HTTP de consulta y simulación representan entradas al mismo componente y a la misma conversación por sesión.
+### Capas y dependencias
 
-## Arquitectura en capas
+Presentación: JSP, JavaScript y recursos JAX-RS. La interfaz envía la solicitud y consulta el estado. Los recursos convierten solicitudes y resultados a HTTP y JSON.
 
-Presentación: JSP, JavaScript, Servlet y recursos JAX-RS. Negocio: interfaces locales, EJB, reglas y DTOs. Datos: entidades y Repository/DAO con JPA/JTA. El servidor inyecta dependencias y administra las transacciones. No se construyen EJB con new en producción.
+Negocio: interfaces EJB para Compra, Venta, Órdenes y Portfolio. Los servicios validan el pedido, resuelven al propietario autenticado y coordinan transacciones. El ejecutor JMS procesa órdenes previamente aceptadas.
 
-CompraResource valida primero que la conversación pertenezca al principal actual. Después CompraService valida ticker, cantidad, precio y fecha y registra una Orden, su OrdenDetalle y una Operacion enlazada en el portfolio resuelto por PortfolioActual. En MySQL la cartera debe estar vinculada a usuarios; ninguna de esas identidades se toma de un ID enviado por el navegador. Finalmente obtiene el resumen del PortfolioService de esa sesión y responde 201. Escritura y consulta son llamadas distintas: una falla posterior de lectura no revierte una compra confirmada. La idempotencia de reintentos queda para una integración posterior.
+Datos: JPA y repositorios sobre el datasource InversorARDS. MySQL conserva usuarios, portfolios, órdenes, detalles y movimientos. El catálogo tiene un esquema propio y consultas encapsuladas.
 
-## Compra stateless
+### Entorno de despliegue
 
-Compra no retiene información de un cliente entre invocaciones. @Stateless permite al contenedor reutilizar instancias. @PostConstruct y @PreDestroy escriben logs de creación y destrucción; estos callbacks no ocurren en cada compra.
+Se empaqueta un WAR Maven con Jakarta EE 10 y el perfil mysql. WildFly Full provee el contenedor, las transacciones JTA y Artemis. El mismo proyecto conserva H2 para pruebas y una demo síncrona aislada. La evidencia de mensajería se obtiene con MySQL.
 
-registrarCompra usa REQUIRED. Los repositories participan de la transacción del contenedor. OrdenRepository usa MANDATORY: cabecera, detalle y movimiento se confirman juntos; si falla uno se revierten los tres. ReglaNegocioException es @ApplicationException(rollback=true). Cantidad y precio deben ser positivos; fecha válida y no futura; ticker existente. Se valida precisión de persistencia y el total redondeado a diez decimales. Los errores de negocio responden HTTP 400.
+### Material de la cátedra
 
-## Portfolio stateful
+Se tomaron como base el TP Integrador y su Anexo, la consigna específica del 16/11 y las clases sobre capas, SOA, mensajería, REST, seguridad y patrones. El diseño del equipo se conserva en Arquitectura_Integracion_SOA.docx y Diseno_Flujo_Asincronico.docx.
 
-PortfolioServiceBean conserva un capital hipotético y un mapa de porcentajes por TipoInstrumento. Esto permite definir capital, asignar porcentajes en sucesivas llamadas y consultar los importes resultantes. No conserva posiciones ni entidades como estado conversacional: obtenerResumen y obtenerPosiciones leen la base en cada llamada con REQUIRED. Comprar actualiza las posiciones sin perder el plan.
+## 2. Componentes y ciclo de vida
 
-PortfolioSesion es CDI SessionScoped y mantiene una referencia al EJB por sesión HTTP. CompraResource, PortfolioResource y SimulacionPortfolioResource utilizan ese holder. Se rechaza con 403 que otra identidad use la misma conversación, incluso antes de persistir una compra. Dos sesiones de una misma cuenta ven su misma cartera en BD y planes temporales independientes.
+### Compra y Venta
 
-La planificación usa NOT_SUPPORTED: no necesita una transacción ni escribe inversiones. Capital no negativo, máximo 999999999999,99 y dos decimales. Porcentajes entre 0 y 100, hasta cuatro decimales; suma menor o igual a 100. Las distribuciones parciales devuelven dinero disponible. Importe por tipo = capital × porcentaje / 100. Se conservan fracciones de centavo para no sobredistribuir y se devuelven copias de los mapas.
+CompraResource expone POST /api/compras y POST /api/ventas. CompraService y VentaService validan fecha, cantidad, precio e instrumento. Venta verifica la cantidad disponible. Ambos servicios son @Stateless y el contenedor puede reutilizar sus instancias. Sus callbacks @PostConstruct y @PreDestroy registran el ciclo de vida.
 
-DELETE /api/portfolio/simulacion limpia solamente el plan. DELETE /api/portfolio/sesion invalida la sesión HTTP; PortfolioSesion llama a cerrar con @Remove y el contenedor ejecuta @PreDestroy. También se libera al expirar la sesión de 30 minutos. @PermitAll en cerrar habilita la limpieza al terminar la autenticación; no vuelve públicos los endpoints protegidos. @PostConstruct y @PreDestroy registran un UUID que identifica la conversación. La capacidad de pasivación queda habilitada por defecto; no se promete persistencia del plan después de reiniciar el servidor.
+### Órdenes
 
-## Cálculos del portfolio persistente
+OrdenResource permite consultar, cancelar, reintentar o descartar según el estado. OrdenServiceBean es @Stateless. El repositorio filtra por propietario y usa bloqueo de fila para coordinar transiciones concurrentes. Orden y OrdenDetalle conservan el pedido. El movimiento asociado representa la ejecución.
 
-Por ticker se suman cantidades e importes de compra. Precio promedio = capital invertido / cantidad; valor actual = cantidad × cotización; ganancia no realizada = valor actual − capital invertido; rendimiento porcentual = ganancia × 100 / capital invertido. Para cartera vacía se devuelven ceros. El patrimonio suma el valor de las posiciones por moneda, sin cuenta de efectivo. Con varias monedas no se devuelve un total general; se utiliza totalesPorMoneda.
+### Portfolio y simulación
 
-Diez AAPL a USD 180 y cinco a USD 210 producen 15 unidades, USD 2.850 de costo y promedio USD 190. Con precio ilustrativo USD 195, el valor es USD 2.925, la ganancia USD 75 y el rendimiento 2,6316 %. Este ejemplo pertenece al perfil H2 de demostración. En MySQL se usa la moneda del par y la fecha del último cierre; no son precios de mercado en vivo.
+PortfolioServiceBean es @Stateful. PortfolioSesion mantiene una referencia por sesión HTTP y valida que el principal siga siendo el mismo. El bean conserva el plan de simulación y calcula posiciones a partir de los movimientos persistidos. La simulación se reinicia con otra sesión. El cierre de sesión destruye la conversación mediante @Remove.
 
-El cálculo acepta COMPRA y rechaza tipos no soportados. Antes de integrar Venta deben acordarse descuento de cantidades/costo, orden de movimientos y ganancia realizada. La revisión local de joaco (88f85f5) contiene OperacionServiceBean @Stateless, OperacionStrategy y VentaStrategy @Dependent; se describen como código externo, no como funcionalidad integrada.
+### Evidencia del contenedor
 
-## Tres patrones y su justificación
+El log local registró la inicialización de Compra, Venta y Portfolio durante la prueba HTTP. También registró la destrucción de la misma instancia de Portfolio luego del logout. La prueba del simulador verificó que dos sesiones conservan planes independientes y que un nuevo login inicia un plan vacío.
 
-**Repository/DAO:** InstrumentoRepository, CatalogoMercadoRepository, OrdenRepository, OperacionRepository y PortfolioRepository encapsulan EntityManager y consultas. Compra y Portfolio reutilizan esta capa sin duplicar persistencia ni incluir SQL en la presentación. Se cuenta como un patrón, no dos.
+## 3. Patrones y decisiones
 
-**Service Facade:** PortfolioService reúne consulta y planificación de la cartera detrás de un contrato. Coordina identidad, operaciones, agrupación y cotización para que los clientes trabajen con DTOs y no con sus dependencias internas.
+### State en la entidad central
 
-**Strategy:** CotizacionStrategy define cotizar(Instrumento); CotizacionCatalogo es la implementación activa, un bean CDI @ApplicationScoped: obtiene el último cierre de MySQL o la referencia ilustrativa del perfil H2. No es un EJB @Stateless. El cálculo depende de la interfaz, y una prueba reemplaza el precio con otra estrategia. Un futuro proveedor puede incorporarse sin cambiar la consolidación, seleccionando su implementación mediante CDI.
+Cada valor persistido de EstadoOrden implementa las transiciones que admite. Orden delega la decisión y aplica el nuevo estado y motivo. Los valores existentes se mantienen por nombre. Los estados sin una transición habilitada rechazan esa acción mediante TransicionOrdenInvalida, que JAX-RS convierte en 409 Conflict.
 
-Stateful y stateless son modelos de EJB, no dos patrones extra. PortfolioSesion administra la referencia en la capa web; el alias /simulador preserva compatibilidad y tampoco se cuenta como un componente nuevo.
+### Transiciones
 
-## Seguridad y persistencia
+PENDIENTE puede pasar a COMPLETADA, RECHAZADA, ERROR o CANCELADA. RECHAZADA y ERROR pueden volver a PENDIENTE o pasar a DESCARTADA. COMPLETADA, CANCELADA y DESCARTADA son finales. El ejecutor conserva su comportamiento idempotente ante una entrega repetida.
 
-web.xml protege /api/* y /dashboard con BASIC y rol USUARIO en ApplicationRealm. Compra y Portfolio usan @RolesAllowed. Sin credenciales: 401; sin rol: 403. Fuera de localhost se requiere HTTPS. PortfolioActual obtiene SessionContext.getCallerPrincipal y busca la cartera del propietario: no se acepta un ID arbitrario ni hay fallback al portfolio 1.
+### Patrones que ya estructuran la aplicación
 
-Login debe establecer el principal/rol del contenedor e invalidar la sesión al salir o cambiar de identidad. La columna propietario conserva el principal y usuario_id ya vincula la cartera con usuarios. El login del equipo debe mantener consistente esta asociación. El primer aprovisionamiento concurrente puede fallar por unicidad; el registro definitivo debe crear la cartera junto al usuario.
+Service Facade concentra el acceso a la cartera y la simulación en PortfolioService. Repository encapsula la persistencia y las consultas del dominio. Strategy separa el cálculo de posiciones de la obtención de su cotización mediante CotizacionStrategy. La cola punto a punto separa al productor del ejecutor.
 
-persistence.xml usa JTA. El build normal conserva ExampleDS y schema action none; demo-init usa create sólo sobre una BD vacía y aislada. El perfil mysql usa InversorARDS con none. Driver y credenciales pertenecen al servidor; no al WAR ni Git. MySQL está conectado: el catálogo recibido se conserva y las compras se guardan en operaciones. Las tablas ordenes y orden_detalles forman parte de cada compra nueva y están enlazadas con operaciones; Portfolio no suma los dos conjuntos. Las pantallas y el alta del login definitivo deben completar el vínculo con usuarios; la FK y la asociación de la demo local ya están implementadas.
+### ADR
 
-## Pruebas y defensa
+Los seis ADR en docs/adr documentan State, Service Facade, Repository, Strategy de cotización, cola JMS y JWT. Cada uno incluye contexto, decisión, alternativas, consecuencias y evidencia. La justificación de los patrones sigue el formato trabajado en la Clase 12.
 
-21 pruebas JUnit/Mockito verifican cálculos, validaciones, identidad, independencia de planes y posiciones actualizadas sin perder la simulación. La prueba real del WAR en WildFly verifica además roles, cookies, transacciones, rutas antiguas/nuevas y retiro de EJB. Ver PRUEBAS.md y EVIDENCIA.md para resultados.
+## 4. Seguridad y contrato REST
 
-Para la defensa, registrar una compra, mostrar el resumen y planificar porcentajes en la misma sesión. Registrar otra compra: cambia la cartera y permanece el plan. Abrir otra sesión: misma cartera para la misma cuenta, plan independiente. Reiniciar el plan y luego cerrar la sesión, explicando la diferencia y mostrando los callbacks. La entrega completa necesita integrar y demostrar Venta.
+### Emisión y validación de JWT
 
-Referencias: [Stateful](https://jakarta.ee/specifications/enterprise-beans/4.0/apidocs/jakarta/ejb/stateful), [Remove](https://jakarta.ee/specifications/enterprise-beans/4.0/apidocs/jakarta/ejb/remove) y [WildFly](https://docs.wildfly.org/30/Getting_Started_Guide.html).
+El login valida credenciales mediante Jakarta Security y el repositorio de usuarios. Las contraseñas existentes usan PBKDF2-HMAC-SHA256 con sal y 600.000 iteraciones. Un login correcto rota la sesión y emite un JWT HS256 de 15 minutos. Incluye emisor, audiencia, sujeto, identificador y roles. La firma se verifica en cada petición con java-jwt.
+
+### Sesión de navegador y autorización
+
+La cookie INVERSORAR_ACCESS usa HttpOnly, SameSite=Strict y Secure sobre HTTPS. JSESSIONID permite comprobar el identificador del JWT y acceder a la conversación del Portfolio. El logout borra la cookie e invalida la sesión, de modo que repetir ambas cookies tras salir devuelve 401. La clave de firma se genera para el despliegue local.
+
+El contenedor recibe el sujeto y los grupos del token verificado. web.xml protege las rutas privadas y los EJB sensibles mantienen @RolesAllowed(USUARIO). Todas las cuentas del alta pública reciben USUARIO. Las mutaciones de órdenes resuelven al propietario en el servidor.
+
+### Resultados observables
+
+La API devuelve 401 si no puede autenticar, 403 al autenticado sin el rol requerido, 404 para una orden inexistente o ajena, 409 para una transición inválida y 400 para una solicitud o regla de negocio inválida. La prueba unitaria verifica también el rechazo criptográfico de un token vencido o sin firma.
+
+## 5. Mensajería y persistencia
+
+### Aceptación de una orden
+
+Compra o Venta valida la solicitud y escribe la orden PENDIENTE con su detalle. ProductorOrdenes publica en la cola ordenes dentro de la transacción de aceptación. La API devuelve 202 con el identificador que permite consultar el resultado.
+
+### Ejecución y consistencia
+
+EjecutorOrdenesMDB recibe el mensaje, recupera el pedido de MySQL y bloquea la fila. Ejecuta solo si continúa PENDIENTE. Completa la orden con su movimiento o la rechaza con motivo. El movimiento queda vinculado al detalle con una restricción única. Si el pedido es una venta, se vuelve a verificar la tenencia efectiva en la ejecución.
+
+### Reentregas y cola de errores
+
+La configuración de WildFly define tres entregas y una demora de cinco segundos. Las fallas técnicas que agotan esos intentos pasan a DLQ.ordenes. OrdenesFallidasMDB puede marcar ERROR si la orden todavía está pendiente. Las pruebas unitarias cubren delegación del consumidor, órdenes repetidas y marcado de errores.
+
+### Evolución de la base
+
+config/mysql-ordenes-estado.sql agrega las columnas necesarias si faltan y recupera fechas disponibles de los movimientos anteriores. Los registros existentes conservan su estado. Se aplica después de las migraciones de órdenes y vínculos. El perfil mysql no ejecuta DDL al desplegar.
+
+## 6. Pruebas y demostración
+
+### Preparación
+
+Configurar WildFly Full con Java 21, datasource MySQL, dominio de seguridad y colas. Aplicar mysql-ordenes-estado.sql sobre la base de demo. Compilar y probar con mvn -Pmysql clean package. Desplegar target/inversorar.war. El README y ENTREGA_2.md incluyen el procedimiento.
+
+### Demostración en vivo
+
+Registrar una cuenta, iniciar sesión y comprar 0,002 BTCUSDT. Mostrar 202 y la orden enviada a Artemis. Confirmar el estado COMPLETADA y el cambio en la cartera. Vender 0,001 y comprobar que queda 0,001. Intentar cancelar la compra completada y observar 409. Usar una segunda cuenta para verificar aislamiento.
+
+### Evidencia reproducible
+
+smoke_segunda_entrega.mjs ejecuta el flujo y verifica la respuesta de la orden, la posición, el aislamiento, JWT ausente o alterado y revocación tras logout. En la primera corrida local las órdenes 6 y 7 fueron recibidas por el MDB y completadas en el primer intento. smoke_simulador.mjs verificó aislamiento, precisión, validaciones y ciclo de la conversación.
+
+### Seguimiento del equipo
+
+ENTREGA_2.md relaciona la consigna con las pruebas y deja identificados los puntos que requieren documentación externa. Falta conciliar las historias de diseño aprobadas, la devolución docente y el tablero Jira con los integrantes que tienen acceso a esos materiales.

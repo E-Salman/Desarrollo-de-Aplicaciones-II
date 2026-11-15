@@ -59,8 +59,12 @@ Esta consolidación se recalcula desde cero en cada llamada (no es conversaciona
 2. **Service Facade**: `PortfolioService` compone identidad, persistencia, cotización y planificación detrás de un contrato pequeño (`obtenerResumen`/`obtenerPosiciones`/`calcularSimulacion`).
 3. **Strategy**: `CotizacionStrategy` desacopla cómo se obtiene el precio de mercado de un instrumento (catálogo H2 de demo o último cierre de MySQL); se puede sustituir sin tocar la consolidación (ver tests en `ComponentesTest`).
 
+### Órdenes asincrónicas en MySQL
+
+Compra y Venta guardan una orden PENDIENTE y publican en Artemis. El MDB ejecuta con los datos persistidos y la API de Órdenes permite consultar su avance. Ver [diseño asincrónico](Diseno_Flujo_Asincronico.docx), [decisión JMS](adr/005-jms-ordenes.md) y [guía del 16/11](ENTREGA_2.md).
+
 ## Seguridad
 
-`web.xml` protege `/api/*` y `/dashboard` con BASIC auth sobre `ApplicationRealm`, exigiendo el rol `USUARIO`. Los EJB de Compra, Venta, Portfolio, catálogo y la resolución de identidad (`PortfolioActualBean`) exigen `@RolesAllowed("USUARIO")` — la identidad llega desde el contenedor, nunca desde un campo del request. `PortfolioSesion.servicio(usuario)` además rechaza con `ForbiddenException` (403) si la sesión HTTP ya está vinculada a otra identidad, evitando que una cookie compartida cruce carteras.
+`web.xml` protege la API y las vistas privadas con el rol `USUARIO`. Jakarta Security verifica el JWT vinculado a la sesión y entrega al contenedor el principal y los grupos firmados. Compra, Venta, Órdenes y Portfolio aplican `@RolesAllowed("USUARIO")`. `PortfolioSesion` vincula la conversación al principal autenticado. Ver [registro y autenticación](AUTENTICACION.md).
 
 Ver [documento técnico](TECNICO.md) para fórmulas, decisiones y defensa, [MySQL](MYSQL.md)/[esquema](MYSQL_ESQUEMA.md) para el detalle del catálogo real, e [integración](INTEGRACION.md) para los contratos con otras ramas (Login definitivo).

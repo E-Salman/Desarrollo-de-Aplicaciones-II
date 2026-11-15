@@ -1,5 +1,7 @@
 # Integración con trabajo de otras ramas
 
+Registro histórico anterior a la integración. Para el estado del 16/11, ver [segunda entrega parcial](ENTREGA_2.md).
+
 Se inspeccionaron las ramas publicadas: `primeros_pasos` y `joaco` apuntaban a `ac4a73f`. El usuario indicó que Login y BD están siendo desarrollados por compañeros y podrían no estar publicados. El refactor previo se realizó sobre integracion_entrega, que ya contiene Compra y Portfolio. No se incorporó ninguna rama adicional ni se diseñaron pantallas de login, tablas de usuarios, importadores de Binance o Venta.
 
 ## Login

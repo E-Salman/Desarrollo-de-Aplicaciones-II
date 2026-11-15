@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.EnumSet;
-import java.util.Set;
 
 /**
  * Cabecera de una compra o venta. Con mensajería nace PENDIENTE y la completa o rechaza el Ejecutor;
@@ -36,25 +34,24 @@ public class Orden {
         return new Orden(usuarioId, tipo, fechaOperacion, moneda, total, EstadoOrden.PENDIENTE);
     }
 
-    private static final Set<EstadoOrden> FALLIDAS = EnumSet.of(EstadoOrden.RECHAZADA, EstadoOrden.ERROR);
-
-    public void completar() { pasar(EnumSet.of(EstadoOrden.PENDIENTE), EstadoOrden.COMPLETADA, null); }
-    public void rechazar(String motivo) { pasar(EnumSet.of(EstadoOrden.PENDIENTE), EstadoOrden.RECHAZADA, motivo); }
-    public void marcarError(String motivo) { pasar(EnumSet.of(EstadoOrden.PENDIENTE), EstadoOrden.ERROR, motivo); }
+    public void completar() { pasar(estado.completar(), null); }
+    public void rechazar(String motivo) { pasar(estado.rechazar(), motivo); }
+    public void marcarError(String motivo) { pasar(estado.marcarError(), motivo); }
     /** El usuario la cancela mientras espera en la cola: el Ejecutor la va a encontrar no pendiente y la descarta. */
-    public void cancelar() { pasar(EnumSet.of(EstadoOrden.PENDIENTE), EstadoOrden.CANCELADA, "Cancelada por el usuario"); }
+    public void cancelar() { pasar(estado.cancelar(), "Cancelada por el usuario"); }
+    public void validarReintento() { estado.reintentar(); }
+
     /** El usuario vuelve a enviar a la cola una orden rechazada o con error. */
-    public void reintentar() { pasar(FALLIDAS, EstadoOrden.PENDIENTE, null); }
+    public void reintentar() { pasar(estado.reintentar(), null); }
     /** El usuario elimina una orden rechazada o con error; se conserva el motivo. */
-    public void descartar() { pasar(FALLIDAS, EstadoOrden.DESCARTADA, motivoRechazo); }
-    private void pasar(Set<EstadoOrden> desde, EstadoOrden hacia, String motivo) {
-        if (!desde.contains(estado)) throw new IllegalStateException("La orden " + id + " está " + estado + ", no " + desde + ".");
+    public void descartar() { pasar(estado.descartar(), motivoRechazo); }
+    private void pasar(EstadoOrden hacia, String motivo) {
         estado = hacia;
         motivoRechazo = motivo == null ? null : motivo.length() > 255 ? motivo.substring(0, 255) : motivo;
     }
 
     public boolean estaPendiente() { return estado == EstadoOrden.PENDIENTE; }
-    public boolean fallo() { return FALLIDAS.contains(estado); }
+    public boolean fallo() { return estado.fallo(); }
     public Long getId() { return id; }
     public Long getUsuarioId() { return usuarioId; }
     public TipoOperacion getTipo() { return tipo; }

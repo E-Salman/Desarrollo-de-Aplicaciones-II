@@ -1,5 +1,7 @@
 # InversorAR — Compra, Venta y Portfolio de Instrumentos
 
+La [guía de segunda entrega parcial](docs/ENTREGA_2.md) reúne los requisitos del 16/11, las pruebas, los ADR y el guion de exposición.
+
 Componentes Jakarta EE 10 implementados en capas: **Compra** y **Venta** (EJB `@Stateless`) registran operaciones; **Portfolio** (EJB `@Stateful`, uno por sesión HTTP vía `PortfolioSesion`) las consolida y además conserva una planificación/simulación de distribución de capital mientras dura la sesión. Un perfil opcional de **MySQL** reemplaza el catálogo de demostración por un catálogo real con precios históricos y agrega el registro transaccional de órdenes de compra.
 
 ## Documentación

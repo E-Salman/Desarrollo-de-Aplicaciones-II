@@ -10,10 +10,12 @@ No se cambia la estructura MySQL de `usuarios`.
 `UsuariosIdentityStore` consulta el repositorio JPA de `inversorarPU`: ExampleDS
 en demo e InversorARDS con `-Pmysql`. Evita duplicar el datasource en una anotación.
 `Autenticacion` implementa `HttpAuthenticationMechanism` y usa `IdentityStoreHandler`,
-`notifyContainerAboutLogin` y `@AutoApplySession`: el contenedor recibe principal
-y grupo `USUARIO`, y conserva la identidad en la sesión HTTP. El mecanismo de
-formulario propio permite responder 401 en la API y redirigir `/dashboard` al
-login. Se conservan las restricciones declarativas y los EJB de Compra, Venta y Portfolio.
+`notifyContainerAboutLogin`. Tras validar el formulario emite un JWT firmado de
+15 minutos en la cookie HttpOnly `INVERSORAR_ACCESS`, con SameSite=Strict y Secure
+sobre HTTPS. `JSESSIONID` mantiene la conversación del Portfolio y vincula esa
+sesión con el identificador del JWT. La identidad y el rol se verifican en cada
+petición a partir del token. El formulario redirige las vistas privadas al
+login y las peticiones API sin autenticación devuelven 401.
 
 ## Preparar WildFly antes del despliegue
 
@@ -39,12 +41,12 @@ y [JASPI en WildFly](https://docs.wildfly.org/38/feature-pack/doc/reference/subs
 ## Uso y migración
 
 1. Abrir `/inversorar/registro`, crear una cuenta y luego iniciar sesión.
-2. `/dashboard` requiere sesión; la API usa la cookie JSESSIONID. Ya no se usa
+2. `/dashboard` y la API requieren INVERSORAR_ACCESS y JSESSIONID. Ya no se usa
    `curl -u` ni el diálogo BASIC.
 3. La cartera se busca primero por `usuario_id`; si falta, se recupera por
    propietario y se vincula. Una vinculación a otra cuenta se rechaza. Las
    carteras históricas con FK correcta conservan propietario e inversiones.
-4. “Cerrar sesión” hace POST con CSRF, `request.logout()` e invalidación. Un nuevo
+4. “Cerrar sesión” hace POST con CSRF, `request.logout()`, borrado del JWT e invalidación. Un nuevo
    login crea otra sesión: las inversiones persisten y la simulación se reinicia.
    Login y registro también validan CSRF.
 
@@ -80,8 +82,7 @@ reingreso. Ejecutado con éxito en WildFly 41.0.1.Final / Java 21 / H2.
 Todas las cuentas registradas reciben `USUARIO`; no hay alta de roles arbitrarios.
 El usuario autenticado sin ese rol sigue sujeto al 403 declarativo, pero no está
 ejercitado por este smoke. Las pruebas unitarias cubren rechazo en EJB.
-La ejecución contra MySQL y la inspección del hash en Workbench quedan pendientes
-en el entorno del equipo; el empaquetado MySQL se verifica por Maven.
+La prueba MySQL de la segunda entrega se reproduce con [el smoke HTTP](../scripts/smoke_segunda_entrega.mjs).
 
 Después de registrar una cuenta en MySQL, comprobar sin revelar el hash completo:
 

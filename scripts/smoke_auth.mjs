@@ -6,14 +6,16 @@ const base = process.argv[2] || 'http://127.0.0.1:8080/inversorar';
 const password = randomUUID();
 const suffix = randomUUID();
 class Client {
-    cookie = '';
+    cookies = new Map();
     async call(path, { method = 'GET', data, expected = 200, form = false } = {}) {
-        const headers = { Cookie: this.cookie };
+        const headers = { Cookie: [...this.cookies.values()].join('; ') };
         if (data) headers['Content-Type'] = form ? 'application/x-www-form-urlencoded' : 'application/json';
         let r = await fetch(base + path, { method, headers, redirect: 'manual',
             body: data ? (form ? new URLSearchParams(data).toString() : JSON.stringify(data)) : undefined });
-        const cookie = r.headers.getSetCookie().find(c => c.startsWith('JSESSIONID='));
-        if (cookie) this.cookie = cookie.split(';')[0];
+        for (const value of r.headers.getSetCookie()) {
+            const pair = value.split(';')[0];
+            this.cookies.set(pair.split('=')[0], pair);
+        }
         assert.equal(r.headers.get('www-authenticate'), null);
         if (r.status === 302 || r.status === 303) {
             return this.call(new URL(r.headers.get('location'), base).pathname.replace('/inversorar', '')

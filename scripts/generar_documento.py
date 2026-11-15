@@ -26,12 +26,12 @@ for i,(title,paras) in enumerate(sections):
  story.append(Paragraph(f'{i+1:02d} / {escape(title)}',styles['TitleCustom']))
  md.append(f'\n## {i+1}. {title}\n')
  for subtitle,body in paras:
-  story.extend([Paragraph(escape(subtitle),styles['SubCustom']),Paragraph(escape(body),styles['BodyCustom'])])
+  story.extend([Paragraph(escape(subtitle),styles['SubCustom']),Paragraph(escape(body).replace("\n\n", "<br/><br/>"),styles['BodyCustom'])])
   md.append(f'\n### {subtitle}\n\n{body}\n')
 def page(canvas,doc):
  canvas.setStrokeColor(colors.HexColor('#b3d3da')); canvas.line(45,805,550,805)
  canvas.setFont('Helvetica',8); canvas.setFillColor(colors.HexColor('#516577'))
- canvas.drawString(45,818,'INVERSORAR  /  DOCUMENTACIÓN TÉCNICA  /  13.09.2026')
- canvas.drawString(45,29,'comp_portafolio | Compra + Portfolio + simulación de apoyo')
- canvas.drawRightString(550,29,f'{doc.page} / 6')
+ canvas.drawString(45,818,'INVERSORAR  /  DOCUMENTACIÓN TÉCNICA  /  16.11.2026')
+ canvas.drawString(45,29,'Segunda entrega parcial | Ordenes, seguridad y mensajeria')
+ canvas.drawRightString(550,29,f'{doc.page} / {len(sections)}')
 SimpleDocTemplate(str(docpath),pagesize=A4,rightMargin=45,leftMargin=45,topMargin=53,bottomMargin=48).build(story,onFirstPage=page,onLaterPages=page)

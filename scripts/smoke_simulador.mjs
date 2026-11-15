@@ -6,13 +6,15 @@ const base = process.argv[2] || 'http://127.0.0.1:8080/inversorar';
 const types = ['ACCION','CRIPTO','BONO','CEDEAR','MONEDA'];
 const path = '/api/portfolio/simulacion';
 class Client {
-    cookie = '';
+    cookies = new Map();
     async call(route, {method='GET', data, form=false, status=200}={}) {
-        const headers = {Cookie:this.cookie};
+        const headers = {Cookie: [...this.cookies.values()].join('; ')};
         if(data) headers['Content-Type'] = form ? 'application/x-www-form-urlencoded' : 'application/json';
         const response = await fetch(base+route,{method,headers,redirect:'manual',body:data ? (form ? new URLSearchParams(data).toString() : JSON.stringify(data)) : undefined});
-        const cookie = response.headers.getSetCookie().find(v=>v.startsWith('JSESSIONID='));
-        if(cookie) this.cookie=cookie.split(';')[0];
+        for (const value of response.headers.getSetCookie()) {
+            const pair = value.split(';')[0];
+            this.cookies.set(pair.split('=')[0], pair);
+        }
         const body=await response.text();
         assert.equal(response.status,status,route+': '+body.slice(0,200));
         return body;
