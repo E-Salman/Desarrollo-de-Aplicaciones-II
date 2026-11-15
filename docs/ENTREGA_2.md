@@ -50,4 +50,17 @@ Se verificó en Chrome a 1360 y 390 px el alta, login, compra, venta, historial,
 - Flujo asincrónico → [ADR 005](adr/005-jms-ordenes.md), [diseño del equipo](Diseno_Flujo_Asincronico.docx) y los IDs que imprime el smoke.
 - Documentación y demo → [documento técnico](TECNICO.pdf), este guion y devolución pendiente de cotejar.
 
-La autorización por rol se declara en el contenedor. El alta web solo emite el rol USUARIO y el smoke estándar no crea un usuario con un rol diferente. Los criterios de seguridad de la Clase 11 orientan las verificaciones de esta entrega. La autenticación no incluye renovación automática del JWT ni limitación de intentos de login.
+### Verificación de autorización por rol
+
+En un WAR temporal, solo el IdentityStore asignó LECTOR a una cuenta de prueba. Se conservaron el login, la firma y validación del JWT, las restricciones declarativas y los recursos de la aplicación. Se verificó que esa cuenta iniciara sesión y recibiera un JWT con LECTOR antes de probar las rutas.
+
+| Petición | Sin sesión | JWT LECTOR | JWT USUARIO |
+|---|---:|---:|---:|
+| GET /api/ordenes | 401 | 403 | 200 |
+| GET /dashboard | | 403 | 200 |
+| POST /api/compras con cuerpo vacío | | 403 | 400 |
+| POST /api/ventas con cuerpo vacío | | 403 | 400 |
+
+El 400 de USUARIO confirma que la petición autorizada alcanzó la validación de negocio. El WAR temporal se retiró y se verificó que el despliegue principal siguiera operativo. El alta web habitual asigna USUARIO.
+
+Los criterios de seguridad de la Clase 11 orientan las verificaciones de esta entrega. La autenticación no incluye renovación automática del JWT ni limitación de intentos de login.
