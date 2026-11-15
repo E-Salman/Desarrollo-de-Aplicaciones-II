@@ -12,7 +12,8 @@ La consigna de exposición del 16/11 pide demostrar en vivo las historias compro
 | Mensajería | Artemis en WildFly Full. El log registra el envío, la recepción por el MDB y el cambio de estado de compra y venta. |
 | Tests unitarios | `mvn -Pmysql clean package` ejecuta JUnit. El smoke usa el WAR desplegado. |
 | Jira al día | Pendiente de verificar en el tablero del equipo. Registrar o vincular tareas y evidencias con los identificadores reales de Jira. |
-| Feedback del diseño | Pendiente de cotejar con la devolución docente y las historias aprobadas. |
+| Historias comprometidas en el diseño | Cerrado por indicación del equipo. |
+| Feedback del diseño | Cerrado por indicación del equipo. |
 
 ## Preparar el entorno
 
@@ -48,7 +49,7 @@ Se verificó en Chrome a 1360 y 390 px el alta, login, compra, venta, historial,
 - Seguridad web → [ADR 006](adr/006-jwt-web.md), `TokensAccesoTest` y los casos HTTP de JWT.
 - Ciclo de órdenes → [ADR 001](adr/001-state-orden.md), `OrdenTest`, `OrdenServiceTest` y los tres 409.
 - Flujo asincrónico → [ADR 005](adr/005-jms-ordenes.md), [diseño del equipo](Diseno_Flujo_Asincronico.docx) y los IDs que imprime el smoke.
-- Documentación y demo → [documento técnico](TECNICO.pdf), este guion y devolución pendiente de cotejar.
+- Documentación y demo → [documento técnico](TECNICO.pdf), y este guion.
 
 ### Verificación de autorización por rol
 

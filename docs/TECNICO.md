@@ -108,4 +108,4 @@ smoke_segunda_entrega.mjs ejecuta el flujo y verifica la respuesta de la orden, 
 
 ### Seguimiento del equipo
 
-ENTREGA_2.md relaciona la consigna con las pruebas y deja identificados los puntos que requieren documentación externa. Falta conciliar las historias de diseño aprobadas, la devolución docente y el tablero Jira con los integrantes que tienen acceso a esos materiales.
+ENTREGA_2.md relaciona la consigna con las pruebas. Por indicación del equipo, las historias comprometidas y el feedback del diseño se dan por cerrados. Queda pendiente actualizar el tablero Jira.
