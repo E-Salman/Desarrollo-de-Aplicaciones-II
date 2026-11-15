@@ -58,8 +58,7 @@ normalizarlos, ya que podrían colisionar. No se modificaron ni borraron usuario
 del servidor ni datos MySQL. Retirar cuentas BASIC de prueba solo después de
 validar el reemplazo y comprobar que otras aplicaciones no las necesitan.
 
-La recuperación existente sigue siendo un prototipo: genera un enlace local
-y no implementa entrega de correo/restablecimiento completo.
+La recuperación de contraseña queda fuera de la interfaz y sin ruta pública hasta completar el envío y el restablecimiento.
 
 H2 ahora persiste `portfolios.usuario_id`. Usar `demo-init` solo con una base
 vacía y aislada; una demo H2 persistente anterior necesita agregar esa columna.

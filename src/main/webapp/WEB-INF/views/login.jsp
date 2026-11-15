@@ -119,15 +119,6 @@
             </div>
 
 
-            <div class="forgot-container">
-
-                <a href="<%= request.getContextPath() %>/recuperar">
-                    ¿Olvidaste tu contraseña?
-                </a>
-
-            </div>
-
-
             <%
                 String error =
                     (String) request.getAttribute("error");

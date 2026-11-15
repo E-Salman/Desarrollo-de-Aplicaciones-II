@@ -838,12 +838,6 @@ button:disabled {
     }
 }
 
-@media (max-width: 800px) {
-    nav {
-        display: none;
-    }
-}
-
 @media (max-width: 650px) {
     main {
         margin: 18px 12px;

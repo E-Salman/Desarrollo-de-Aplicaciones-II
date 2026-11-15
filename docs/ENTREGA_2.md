@@ -31,7 +31,9 @@ Ejecutar los smoke en una base de demostración. Crean cuentas distintas y el sm
 
 ## Resultado local
 
-El 15/11 se ejecutó el paquete MySQL con 70 pruebas unitarias, sin fallas ni errores. Los smoke de entrega y simulador pasaron sobre el WAR de WildFly 41, Java 21 y MySQL local. En la corrida final las órdenes 8 y 9 completaron el flujo por Artemis. El smoke también verificó 403 frente a una mutación iniciada desde otro origen del mismo sitio.
+El 15/11 se ejecutó el paquete MySQL con 70 pruebas unitarias, sin fallas ni errores. Los smoke de entrega y simulador pasaron sobre el WAR de WildFly 41, Java 21 y MySQL local. En la verificación posterior las órdenes 18 y 19 completaron el flujo por Artemis. El smoke también verificó 403 frente a una mutación iniciada desde otro origen del mismo sitio.
+
+Se verificó en Chrome a 1360 y 390 px el alta, login, compra, venta, historial, navegación y logout. El escenario de navegador bloqueó el CDN del gráfico para comprobar que la cartera y la demo siguen funcionando con la leyenda de distribución.
 
 ## Guion de exposición
 

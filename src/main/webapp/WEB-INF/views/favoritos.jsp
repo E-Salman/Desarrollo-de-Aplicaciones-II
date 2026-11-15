@@ -16,7 +16,7 @@
     <title>Favoritos - InversorAR</title>
 
     <link rel="stylesheet"
-          href="<%= request.getContextPath() %>/assets/dashboard.css?v=20261018-distribucion">
+          href="<%= request.getContextPath() %>/assets/dashboard.css?v=20261115-nav">
 
     <link rel="stylesheet"
           href="<%= request.getContextPath() %>/assets/favoritos.css">

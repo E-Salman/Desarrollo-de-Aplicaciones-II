@@ -19,9 +19,9 @@
 
         String[][] items = {
             {"dashboard", "/dashboard", "Dashboard"},
-            {"portfolio", "/portfolio", "Portfolio"},
+            {"portfolio", "/dashboard#mis-inversiones", "Portfolio"},
             {"favoritos", "/favoritos", "Favoritos"},
-            {"history", "/historial", "Historial"},
+            {"history", "/dashboard#transacciones", "Historial"},
             {"simulator", "/simulador", "Simulador"}
         };
     %>
@@ -65,11 +65,6 @@
             </summary>
 
             <div class="usuario-dropdown">
-
-                <a class="menu-opcion"
-                   href="<%= ctx %>/perfil.jsp">
-                    Mi perfil
-                </a>
 
                 <%-- Lo muestra dashboard.js cuando las órdenes van por mensajería (perfil MySQL). --%>
                 <button type="button" id="abrirTransacciones" class="menu-opcion" hidden>

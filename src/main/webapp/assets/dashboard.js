@@ -77,7 +77,8 @@ function renderDistribucion(posiciones) {
     const valores = tipos.map(tipo => totales[tipo]);
 
     // Crear gráfico de dona
-    graficoDistribucion = new Chart(canvas, {
+    canvas.hidden = typeof window.Chart !== "function";
+    if (!canvas.hidden) graficoDistribucion = new window.Chart(canvas, {
         type: "doughnut",
 
         data: {
@@ -415,6 +416,16 @@ async function iniciar() {
     $("abrirModalVenta").disabled = false;
     if (mysql) {
       $("abrirTransacciones").hidden = false;
+      const abrirHistorial = () => {
+        if (location.hash !== "#transacciones") return;
+        if (!transacciones.open) transacciones.showModal();
+        mostrarVista("completadas");
+      };
+      window.addEventListener("hashchange", abrirHistorial);
+      transacciones.addEventListener("close", () => {
+        if (location.hash === "#transacciones") history.replaceState(null, "", location.pathname + location.search);
+      });
+      abrirHistorial();
       seguirPendientes((await actualizarContadores()).map(o => o.id));
     }
   }

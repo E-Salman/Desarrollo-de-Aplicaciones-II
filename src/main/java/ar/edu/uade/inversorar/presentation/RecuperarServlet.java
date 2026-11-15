@@ -4,14 +4,13 @@ import ar.edu.uade.inversorar.business.UsuarioService;
 
 import jakarta.ejb.EJB;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
-@WebServlet("/recuperar")
+// Prototipo sin ruta pública hasta completar la entrega segura del enlace y el restablecimiento.
 public class RecuperarServlet extends HttpServlet {
 
     @EJB
