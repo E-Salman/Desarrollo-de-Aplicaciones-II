@@ -60,6 +60,16 @@
                 </executions>
             </plugin>
             <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
+            <!-- Cobertura: "mvnw verify" genera target/site/jacoco/index.html y jacoco.xml (los usa el CI). -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.13</version>
+                <executions>
+                    <execution><id>preparar-agente</id><goals><goal>prepare-agent</goal></goals></execution>
+                    <execution><id>reporte</id><phase>verify</phase><goals><goal>report</goal></goals></execution>
+                </executions>
+            </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>

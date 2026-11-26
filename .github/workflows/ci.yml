@@ -1,0 +1,57 @@
+# CI de InversorAR: compila, corre los tests y publica la cobertura (JaCoCo) en cada push y PR.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build, tests y cobertura (perfil MySQL)
+        run: ./mvnw -B -Pmysql clean verify
+
+      - name: Resumen de cobertura
+        if: always() && hashFiles('target/site/jacoco/jacoco.csv') != ''
+        run: |
+          {
+            echo "## Cobertura por paquete (JaCoCo)"
+            echo "| Paquete | Líneas | Ramas |"
+            echo "|---|---|---|"
+            tail -n +2 target/site/jacoco/jacoco.csv | awk -F, '
+              { p=$2; sub(/^ar\.edu\.uade\.inversorar\.?/, "", p); lm[p]+=$8; lc[p]+=$9; bm[p]+=$6; bc[p]+=$7 }
+              END { for (p in lm) {
+                      l = (lm[p]+lc[p]) ? sprintf("%.0f%%", 100*lc[p]/(lm[p]+lc[p])) : "-";
+                      b = (bm[p]+bc[p]) ? sprintf("%.0f%%", 100*bc[p]/(bm[p]+bc[p])) : "-";
+                      printf "| %s | %s | %s |\n", p, l, b } }' | sort
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-jacoco
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+
+      - name: Publicar reportes de tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes-surefire
+          path: target/surefire-reports/
