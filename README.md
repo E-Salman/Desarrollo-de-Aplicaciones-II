@@ -63,17 +63,46 @@ Estructura completa para el equipo: [diccionario de las 11 tablas y sus relacion
 
 ## Ejecutar
 
-Requiere JDK 17, Maven 3.9 y WildFly compatible con Jakarta EE 10. Verificación realizada con WildFly 30.0.1.Final.
+### Build con un solo comando
+
+Requiere solo JDK 17 o superior (`JAVA_HOME` apuntando a ese JDK). Maven **no** hace falta instalarlo: el repositorio incluye el Maven Wrapper, que la primera vez descarga Maven 3.9.16 (versión fijada en `.mvn/wrapper/maven-wrapper.properties`) a `~/.m2/wrapper`. Compila, corre los tests y genera `target/inversorar.war`:
 
 ```powershell
-mvn test
-mvn package
+.\mvnw.cmd -Pmysql clean verify
+```
+
+En Linux/Mac o en CI: `./mvnw -Pmysql clean verify`. Sin `-Pmysql` se genera la variante de desarrollo con H2. Si el JDK o Maven no alcanzan, `maven-enforcer-plugin` corta el build con un mensaje claro.
+
+### Levantar la aplicación
+
+Requisitos previos, que se instalan una sola vez y a mano: JDK 17+, WildFly 41 descomprimido fuera de OneDrive y MySQL 8 con la base preparada. La base **no** la crea ningún script automático: se importa el dump del equipo (fuera de Git) y se aplican los scripts de `config/` en este orden, según [MySQL](docs/MYSQL.md):
+
+1. `mysql-compras.sql`
+2. `mysql-ordenes.sql`
+3. `mysql-vincular-ordenes.sql`
+4. `mysql-ordenes-estado.sql`
+
+Solo `mysql-compras.sql` y `mysql-ordenes-estado.sql` se pueden repetir; los otros dos se ejecutan una única vez. Con la base lista, un solo comando configura WildFly, compila y despliega (si WildFly no está corriendo, lo abre en otra ventana en modo full):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File config\setup-wildfly.ps1
+```
+
+Detalle de lo que hace el script en [WildFly con mensajería](#wildfly-con-mensajería-perfil-mysql). Después: `http://localhost:8080/inversorar/dashboard`.
+
+### Variante H2 (desarrollo)
+
+Verificación original realizada con WildFly 30.0.1.Final.
+
+```powershell
+.\mvnw.cmd test
+.\mvnw.cmd package
 ```
 
 El WAR normal **no crea ni borra tablas**. Para una instalación nueva de demostración, con H2 ExampleDS vacío y aislado:
 
 ```powershell
-mvn -Pdemo-init package
+.\mvnw.cmd -Pdemo-init package
 Copy-Item target/inversorar.war "$env:WILDFLY_HOME/standalone/deployments/"
 ```
 
@@ -85,7 +114,7 @@ La mensajería asincrónica usa el broker ActiveMQ Artemis embebido en WildFly, 
 
 Requisitos: MySQL con la base preparada (ver [MySQL](docs/MYSQL.md)) y WildFly fuera de OneDrive. El driver Connector/J no hace falta instalarlo: si WildFly no tiene el módulo `com.mysql`, el script lo crea con un `.jar` que encuentre en `standalone/deployments` o en `.m2`, o lo descarga de Maven Central verificando su SHA-1 (`-DriverJar` permite indicar uno propio). También se puede ejecutar con F5 desde PowerShell ISE abriendo `config\setup-wildfly.ps1` del repositorio: si no recibe la carpeta de WildFly, la pregunta.
 
-1. Arrancar WildFly con **doble clic en `config\iniciar-wildfly.bat`** y dejar esa ventana abierta (Ctrl+C lo detiene). Siempre usa `standalone-full.xml`, avisa si ya hay un WildFly corriendo (y ofrece cerrarlo) y la primera vez pregunta la carpeta de WildFly y la recuerda (`%APPDATA%\InversorAR\wildfly-home.txt`; acepta también la carpeta que la contiene). `-CambiarCarpeta` la vuelve a preguntar. Equivale a `bin/standalone.bat -c standalone-full.xml`.
+1. (Opcional: si se saltea, el script del paso 2 abre WildFly en otra ventana.) Arrancar WildFly con **doble clic en `config\iniciar-wildfly.bat`** y dejar esa ventana abierta (Ctrl+C lo detiene). Siempre usa `standalone-full.xml`, avisa si ya hay un WildFly corriendo (y ofrece cerrarlo) y la primera vez pregunta la carpeta de WildFly y la recuerda (`%APPDATA%\InversorAR\wildfly-home.txt`; acepta también la carpeta que la contiene). `-CambiarCarpeta` la vuelve a preguntar. Equivale a `bin/standalone.bat -c standalone-full.xml`.
 2. Desde la carpeta del repositorio, ejecutar el script de puesta en marcha (pide la contraseña de MySQL oculta la primera vez; si ya se usó `iniciar-wildfly.bat`, toma la carpeta recordada y `-WildflyHome` no hace falta):
 
 ```powershell

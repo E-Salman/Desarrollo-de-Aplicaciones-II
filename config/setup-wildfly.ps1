@@ -3,7 +3,10 @@
     Configura un WildFly en modo full para InversorAR (perfil MySQL + mensajería) y despliega el WAR.
 
 .DESCRIPTION
-    Requiere WildFly iniciado con:  bin\standalone.bat -c standalone-full.xml
+    Si WildFly no está corriendo, lo inicia en segundo plano con:  bin\standalone.bat -c standalone-full.xml
+    (para verlo en una ventana propia, iniciarlo antes con config\iniciar-wildfly.bat).
+    Requisitos previos: JDK 17+ (JAVA_HOME), WildFly 41 descomprimido y MySQL con la base preparada
+    (docs/MYSQL.md). Maven no hace falta: se usa el Maven Wrapper (mvnw.cmd).
     Se ejecuta desde el repositorio (config\setup-wildfly.ps1), con F5 en PowerShell ISE o por consola.
     Pasos: driver MySQL (lo instala si falta), propiedades JDBC, datasource, seguridad, colas,
     compilación y despliegue.
@@ -163,7 +166,26 @@ Ok "WildFly: $WildflyHome"
 $script:cli = Join-Path $WildflyHome "bin\jboss-cli.bat"
 if (-not (Test-Path $script:cli)) { Falla "No se encontró $script:cli. ¿La carpeta de WildFly es correcta (la que contiene bin\)?" }
 if ((JbossCli @("--command=:read-attribute(name=server-state)")).Codigo -ne 0) {
-    Falla "WildFly no está corriendo. Iniciarlo en otra ventana con:`n  & `"$WildflyHome\bin\standalone.bat`" -c standalone-full.xml"
+    # No hay WildFly: se inicia en segundo plano en modo full. Con la salida redirigida a un archivo
+    # (abrir una consola nueva se colgaba en algunas terminales). Sigue corriendo al cerrar esta ventana.
+    if (Get-NetTCPConnection -LocalPort 8080, 9990 -State Listen -ErrorAction SilentlyContinue) {
+        Falla "Los puertos 8080/9990 están ocupados por otro programa. Cerrarlo o usar config\iniciar-wildfly.bat."
+    }
+    $consola = Join-Path $WildflyHome "standalone\log\consola-inversorar.log"
+    New-Item -ItemType Directory -Force (Split-Path $consola) | Out-Null
+    Write-Host "    WildFly no está corriendo: iniciándolo en segundo plano (modo full)..."
+    Start-Process -FilePath (Join-Path $WildflyHome "bin\standalone.bat") -ArgumentList "-c", "standalone-full.xml" `
+        -WorkingDirectory (Join-Path $WildflyHome "bin") -WindowStyle Hidden `
+        -RedirectStandardOutput $consola -RedirectStandardError "$consola.err"
+    $arriba = $false
+    for ($i = 0; $i -lt 60 -and -not $arriba; $i++) {
+        Start-Sleep -Seconds 2
+        $r = JbossCli @("--command=:read-attribute(name=server-state)")
+        $arriba = $r.Codigo -eq 0 -and $r.Salida -match '"running"'
+    }
+    if (-not $arriba) { Falla "WildFly no terminó de arrancar en 2 minutos. Ver $consola" }
+    Ok "WildFly iniciado en segundo plano (salida en $consola)"
+    $script:iniciadoAca = $true
 }
 if (-not (Existe "/subsystem=messaging-activemq")) {
     Falla "WildFly está corriendo sin mensajería. Detenerlo y reiniciarlo con -c standalone-full.xml"
@@ -277,12 +299,13 @@ if ($SinCompilar) {
 } else {
     Paso "Compilando con el perfil MySQL"
     Push-Location $repo
-    try { $salidaMvn = Nativo { & mvn -q -Pmysql clean package } } finally { Pop-Location }
+    # Maven Wrapper: baja la versión de Maven del proyecto si hace falta, sin instalar Maven.
+    try { $salidaMvn = Nativo { & (Join-Path $repo "mvnw.cmd") -q -Pmysql clean package } } finally { Pop-Location }
     $codigoMvn = $LASTEXITCODE
     # Avisos conocidos e inofensivos de la JVM y de Mockito; el resto se muestra.
     $ruido = 'Sharing is only supported|Mockito is currently self-attaching|javadoc\.io/doc/org\.mockito|Java agent has been loaded|EnableDynamicAgentLoading|jdk\.instrument\.traceUsage|Dynamic loading of agents'
     $salidaMvn | Where-Object { $_ -and $_ -notmatch $ruido } | ForEach-Object { Write-Host "    $_" }
-    if ($codigoMvn -ne 0) { Falla "Falló la compilación o los tests (mvn -Pmysql clean package). El detalle está arriba." }
+    if ($codigoMvn -ne 0) { Falla "Falló la compilación o los tests (mvnw -Pmysql clean package). El detalle está arriba." }
     Ok "target\inversorar.war generado"
 }
 
@@ -318,3 +341,7 @@ if ((HashDesplegado) -eq $hashWar -and (EstadoDespliegue) -match '"OK"') {
 
 Write-Host ""
 Write-Host "Listo. Abrir http://localhost:8080/inversorar/dashboard" -ForegroundColor Green
+if ($script:iniciadoAca) {
+    Write-Host "WildFly quedó corriendo en segundo plano. Para detenerlo:" -ForegroundColor Cyan
+    Write-Host "  & `"$script:cli`" --connect --command=:shutdown"
+}

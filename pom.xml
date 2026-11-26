@@ -36,6 +36,29 @@
         <resources><resource><directory>src/main/resources</directory><filtering>true</filtering></resource></resources>
         <finalName>inversorar</finalName>
         <plugins>
+            <!-- Corta el build con un mensaje claro si el JDK o Maven no alcanzan (usar ./mvnw). -->
+            <plugin>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>versiones-minimas</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,)</version>
+                                    <message>InversorAR necesita JDK 17 o superior. Apuntar JAVA_HOME a un JDK 17/21.</message>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.9,)</version>
+                                    <message>Usar el Maven Wrapper: ./mvnw (o .\mvnw.cmd en Windows).</message>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
