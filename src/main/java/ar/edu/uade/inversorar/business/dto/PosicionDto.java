@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 public class PosicionDto {
     public String moneda;
     public String fechaCotizacion;
+    /** Origen del precio actual: null (catálogo), "BINANCE" (en vivo, REST) o "RESPALDO" (Binance no respondió: último cierre). */
+    public String fuenteCotizacion;
     public BigDecimal precioActual; public BigDecimal rendimientoPorcentaje;
     public String nombre; public String ticker; public String tipo;
     public BigDecimal cantidad; public BigDecimal precioPromedio; public BigDecimal invertido; public BigDecimal actual; public BigDecimal rendimiento;

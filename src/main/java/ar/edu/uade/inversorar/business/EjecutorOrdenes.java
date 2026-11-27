@@ -1,6 +1,8 @@
 package ar.edu.uade.inversorar.business;
 
 import ar.edu.uade.inversorar.data.*;
+import ar.edu.uade.inversorar.integracion.MercadoLegadoCliente;
+import ar.edu.uade.inversorar.integracion.MercadoLegadoCliente.RespuestaMercado;
 import ar.edu.uade.inversorar.mensajeria.OrdenMensaje;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
@@ -25,6 +27,7 @@ public class EjecutorOrdenes {
     @Inject private OrdenRepository ordenes;
     @Inject private PortfolioRepository portfolios;
     @Inject private OperacionRepository operaciones;
+    @Inject private MercadoLegadoCliente mercado;
 
     public Resultado ejecutar(OrdenMensaje mensaje) {
         // Bloqueada hasta el fin de la transacción: nadie la cancela o reintenta mientras se ejecuta.
@@ -47,12 +50,18 @@ public class EjecutorOrdenes {
                 return rechazar(orden, "Tenencia insuficiente: tenés " + texto(poseida) + " de " + instrumento.getTicker()
                         + " y la orden quería vender " + texto(detalle.getCantidad()) + ".");
         }
+        // Integración SOAP con el mercado legado. Un Fault de negocio rechaza la orden; un timeout (5 s) o una
+        // falla técnica lanza MercadoNoDisponible y deshace todo: el broker reintenta y después la DLQ la marca ERROR.
+        RespuestaMercado mercadoDijo = mercado.ejecutar(orden.getId(), orden.getTipo().name(), instrumento.getTicker(),
+                detalle.getCantidad(), detalle.getPrecioUnitario());
+        if (!mercadoDijo.aceptada()) return rechazar(orden, "Rechazada por el mercado: " + mercadoDijo.motivo());
+
         LocalDate fecha = orden.getFechaOperacion() != null ? orden.getFechaOperacion() : LocalDate.now();
         Operacion operacion = new Operacion(portfolio, instrumento, orden.getTipo(), detalle.getCantidad(), detalle.getPrecioUnitario(), fecha);
         operacion.vincularOrden(detalle);
         operaciones.guardar(operacion);
         orden.completar();
-        LOG.info(mensaje + ": COMPLETADA");
+        LOG.info(mensaje + ": COMPLETADA (operación de mercado " + mercadoDijo.numeroOperacion() + ")");
         return Resultado.COMPLETADA;
     }
 

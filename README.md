@@ -11,6 +11,7 @@ Componentes Jakarta EE 10 implementados en capas: **Compra** y **Venta** (EJB `@
 - [Requisitos y checklist](docs/REQUISITOS.md)
 - [Funcionamiento de la venta](docs/VENTA.md)
 - [Documento técnico](docs/TECNICO.md) (el PDF en `docs/TECNICO.pdf` quedó desactualizado; no se lo considera vigente)
+- [Integraciones externas: SOAP con el mercado legado, REST con Binance, timeout y fallback](docs/INTEGRACIONES_EXTERNAS.md)
 - [Integración con Login, BD y otras ramas](docs/INTEGRACION.md)
 - [Esquema MySQL completo](docs/MYSQL_ESQUEMA.md) y [configuración/pruebas MySQL](docs/MYSQL.md)
 - [Pruebas y demo](docs/PRUEBAS.md)
@@ -89,6 +90,14 @@ powershell -ExecutionPolicy Bypass -File config\setup-wildfly.ps1
 ```
 
 Detalle de lo que hace el script en [WildFly con mensajería](#wildfly-con-mensajería-perfil-mysql). Después: `http://localhost:8080/inversorar/dashboard`.
+
+Las órdenes se ejecutan contra el **mercado legado (SOAP)**, un simulador que corre aparte. Hay que levantarlo en otra consola y dejarlo abierto; sin él, las órdenes terminan en ERROR tras los reintentos:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File legado\iniciar-mercado.ps1
+```
+
+Los precios del portfolio salen en vivo de Binance (REST) y, si no responde en 5 s, del último cierre en MySQL. Detalle, modos de falla para la demo y por qué se simula el legado: [integraciones externas](docs/INTEGRACIONES_EXTERNAS.md).
 
 ### Variante H2 (desarrollo)
 

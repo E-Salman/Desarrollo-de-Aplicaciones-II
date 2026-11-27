@@ -168,6 +168,12 @@ function renderDistribucion(posiciones) {
   const api = async (path, options) => (await pedir(path, options)).body;
   function actualizarTotal() { $("total").value = money(dec($("cantidad").value) * dec($("precio").value), moneda); }
   function actualizarTotalVenta() { $("totalVenta").value = money(dec($("cantidadVenta").value) * dec($("precioVenta").value), monedaVenta); }
+  // De dónde salió el precio actual: Binance en vivo (REST), el último cierre por fallback, o el catálogo.
+  function fuentePrecio(p) {
+    if (p.fuenteCotizacion === "BINANCE") return "Precio en vivo (Binance): " + esc(p.fechaCotizacion);
+    if (p.fuenteCotizacion === "RESPALDO") return "Binance no disponible · último cierre: " + esc(p.fechaCotizacion || "-");
+    return p.fechaCotizacion ? "Cierre histórico: " + esc(p.fechaCotizacion) : "Cotización de demostración";
+  }
   function renderResumen(r) {
     ultimoResumen = r;
     renderDistribucion(r.posiciones);
@@ -176,7 +182,7 @@ function renderDistribucion(posiciones) {
     $("posiciones").innerHTML = r.posiciones.length ? r.posiciones.map(p =>
       '<article class="posicion"><div><b>' + esc(p.nombre) + '</b><small>' + esc(p.ticker) + ' · ' + esc(p.tipo) +
       '</small><small>Cantidad: ' + numero(p.cantidad) + ' · Promedio: ' + esc(money(p.precioPromedio,p.moneda)) +
-      '</small><small>' + (p.fechaCotizacion ? 'Cierre histórico: ' + esc(p.fechaCotizacion) : "Cotización de demostración") +
+      '</small><small>' + fuentePrecio(p) +
       '</small></div><div><b>' + esc(money(p.actual,p.moneda)) + '</b><small class="' + (dec(p.rendimiento) >= 0 ? "positivo" : "negativo") +
       '">' + esc(money(p.rendimiento,p.moneda)) + ' (' + numero(p.rendimientoPorcentaje) + '%)</small></div></article>').join("") : "<p>Aún no hay inversiones.</p>";
   }

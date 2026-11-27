@@ -133,7 +133,7 @@ public class PortfolioServiceBean implements PortfolioService, Serializable {
             if (cantidad.signum() <= 0) continue;
             PosicionDto p = new PosicionDto();
             p.ticker = i.getTicker(); p.nombre = i.getNombre(); p.tipo = i.getTipo().name();
-            p.moneda = monedaNativa; p.fechaCotizacion = fechaCotizacion;
+            p.moneda = monedaNativa; p.fechaCotizacion = fechaCotizacion; p.fuenteCotizacion = i.getFuenteCotizacion();
             p.cantidad = cantidad; p.invertido = invertido; p.precioActual = precioActual;
             p.precioPromedio = p.invertido.divide(p.cantidad, 10, RoundingMode.HALF_UP);
             p.actual = p.cantidad.multiply(p.precioActual).setScale(10, RoundingMode.HALF_UP);

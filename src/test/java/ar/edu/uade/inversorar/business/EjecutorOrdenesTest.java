@@ -2,6 +2,9 @@ package ar.edu.uade.inversorar.business;
 
 import ar.edu.uade.inversorar.business.EjecutorOrdenes.Resultado;
 import ar.edu.uade.inversorar.data.*;
+import ar.edu.uade.inversorar.integracion.MercadoLegadoCliente;
+import ar.edu.uade.inversorar.integracion.MercadoLegadoCliente.RespuestaMercado;
+import ar.edu.uade.inversorar.integracion.MercadoNoDisponible;
 import ar.edu.uade.inversorar.mensajeria.OrdenMensaje;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,14 +25,16 @@ class EjecutorOrdenesTest {
     OrdenRepository ordenes = mock(OrdenRepository.class);
     PortfolioRepository portfolios = mock(PortfolioRepository.class);
     OperacionRepository operaciones = mock(OperacionRepository.class);
+    MercadoLegadoCliente mercado = mock(MercadoLegadoCliente.class);
     Instrumento cat = new Instrumento("1000CAT/USDC", "1000CATUSDC", TipoInstrumento.CRIPTO, n("0.0018"));
     Portfolio cartera = new Portfolio("Prueba", "ana");
     Orden orden; OrdenDetalle detalle;
 
     @BeforeEach void preparar() throws Exception {
-        inyectar(ejecutor, "ordenes", ordenes); inyectar(ejecutor, "portfolios", portfolios); inyectar(ejecutor, "operaciones", operaciones);
+        inyectar(ejecutor, "ordenes", ordenes); inyectar(ejecutor, "portfolios", portfolios); inyectar(ejecutor, "operaciones", operaciones); inyectar(ejecutor, "mercado", mercado);
         inyectar(cartera, "id", 5L); inyectar(cartera, "usuarioId", 7L);
         when(portfolios.porUsuarioId(7L)).thenReturn(Optional.of(cartera));
+        when(mercado.ejecutar(anyLong(), any(), any(), any(), any())).thenReturn(RespuestaMercado.aceptada("MKT-1"));
     }
     OrdenMensaje orden(TipoOperacion tipo, String cantidad) throws Exception {
         orden = Orden.pendiente(7L, tipo, LocalDate.of(2026, 10, 1), "USDC", n(cantidad).multiply(n("0.0018"))); inyectar(orden, "id", 30L);
@@ -59,24 +64,25 @@ class EjecutorOrdenesTest {
         assertEquals(Resultado.RECHAZADA, ejecutor.ejecutar(orden(TipoOperacion.VENTA, "89")));
         assertEquals(EstadoOrden.RECHAZADA, orden.getEstado());
         assertEquals("Tenencia insuficiente: tenés 9 de 1000CATUSDC y la orden quería vender 89.", orden.getMotivoRechazo());
-        verify(operaciones, never()).guardar(any());
+        verify(operaciones, never()).guardar(any()); verifyNoInteractions(mercado);
     }
     @Test void unaOrdenCanceladaNoSeEjecuta() throws Exception {
         var mensaje = orden(TipoOperacion.VENTA, "89"); orden.cancelar();
         assertEquals(Resultado.IGNORADA, ejecutor.ejecutar(mensaje));
-        assertEquals(EstadoOrden.CANCELADA, orden.getEstado()); verify(operaciones, never()).guardar(any());
+        assertEquals(EstadoOrden.CANCELADA, orden.getEstado()); verify(operaciones, never()).guardar(any()); verifyNoInteractions(mercado);
     }
     @Test void unMensajeDuplicadoNoEjecutaDosVeces() throws Exception {
         var mensaje = orden(TipoOperacion.COMPRA, "10");
         assertEquals(Resultado.COMPLETADA, ejecutor.ejecutar(mensaje));
         assertEquals(Resultado.IGNORADA, ejecutor.ejecutar(mensaje));
         verify(operaciones, times(1)).guardar(any());
+        verify(mercado, times(1)).ejecutar(anyLong(), any(), any(), any(), any());
     }
     @Test void unaOrdenInexistenteSeIgnora() {
         var mensaje = new OrdenMensaje(); mensaje.ordenId = 999L;
         when(ordenes.bloquear(999L)).thenReturn(Optional.empty());
         assertEquals(Resultado.IGNORADA, ejecutor.ejecutar(mensaje));
-        verifyNoInteractions(operaciones);
+        verifyNoInteractions(operaciones, mercado);
     }
     @Test void laDlqSoloMarcaErrorUnaOrdenPendiente() throws Exception {
         orden(TipoOperacion.COMPRA, "10");
@@ -84,5 +90,24 @@ class EjecutorOrdenesTest {
         assertEquals(EstadoOrden.ERROR, orden.getEstado());
         // Ya no está pendiente: un segundo aviso de la DLQ no la toca.
         assertFalse(ejecutor.marcarError(30L, "Falla técnica"));
+    }
+
+    @Test void laCompraSeEnviaAlMercadoConLosDatosDeLaOrden() throws Exception {
+        ejecutor.ejecutar(orden(TipoOperacion.COMPRA, "654"));
+        verify(mercado).ejecutar(30L, "COMPRA", "1000CATUSDC", n("654"), n("0.0018"));
+    }
+    @Test void unFaultDelMercadoRechazaConSuMotivoYSinOperacion() throws Exception {
+        when(mercado.ejecutar(anyLong(), any(), any(), any(), any())).thenReturn(RespuestaMercado.rechazada("Instrumento suspendido por el mercado."));
+        assertEquals(Resultado.RECHAZADA, ejecutor.ejecutar(orden(TipoOperacion.COMPRA, "10")));
+        assertEquals(EstadoOrden.RECHAZADA, orden.getEstado());
+        assertEquals("Rechazada por el mercado: Instrumento suspendido por el mercado.", orden.getMotivoRechazo());
+        verify(operaciones, never()).guardar(any());
+    }
+    @Test void siElMercadoNoRespondeLanzaParaQueElBrokerReintente() throws Exception {
+        when(mercado.ejecutar(anyLong(), any(), any(), any(), any())).thenThrow(new MercadoNoDisponible("sin respuesta en 5 s"));
+        var mensaje = orden(TipoOperacion.COMPRA, "10");
+        assertThrows(MercadoNoDisponible.class, () -> ejecutor.ejecutar(mensaje));
+        assertEquals(EstadoOrden.PENDIENTE, orden.getEstado(), "sigue pendiente: la transacción se deshace y se reintenta");
+        verify(operaciones, never()).guardar(any());
     }
 }
