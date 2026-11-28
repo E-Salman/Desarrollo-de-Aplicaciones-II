@@ -35,6 +35,39 @@ public class CatalogoMercadoRepository {
         return rows.stream().map(InstrumentoMercado::new).toList();
     }
 
+    /**
+     * Activo del catálogo (símbolo y nombre) para buscar noticias: coincide por símbolo o nombre exacto, por
+     * el ticker o el nombre de un par (BTCUSDT o BTC/USDT → BTC, sin tomar la moneda de cotización) o por el
+     * comienzo del nombre.
+     * Solo activos que forman parte de algún instrumento. El texto llega validado (sin comodines de LIKE).
+     */
+    @SuppressWarnings("unchecked")
+    public Optional<String[]> activoParaNoticias(String texto) {
+        String t = texto.trim().toLowerCase(Locale.ROOT);
+        List<Object[]> rows = em.createNativeQuery("""
+            SELECT a.simbolo, a.nombre FROM activos a
+            WHERE EXISTS (SELECT 1 FROM instrumento_activos x WHERE x.activo_id = a.id)
+              AND (LOWER(a.simbolo) = :t OR LOWER(a.nombre) = :t OR LOWER(a.nombre) LIKE :prefijo
+                   OR a.id IN (SELECT ia.activo_id FROM instrumento_activos ia JOIN instrumentos i ON i.id = ia.instrumento_id
+                               WHERE (LOWER(i.simbolo) = :t OR LOWER(i.nombre) = :t) AND ia.rol <> 'COTIZACION'))
+            ORDER BY CASE WHEN LOWER(a.simbolo) = :t OR LOWER(a.nombre) = :t THEN 0 ELSE 1 END, CHAR_LENGTH(a.nombre), a.simbolo
+            """).setParameter("t", t).setParameter("prefijo", t + "%").setMaxResults(1).getResultList();
+        if (!rows.isEmpty()) return Optional.of(new String[]{(String) rows.get(0)[0], (String) rows.get(0)[1]});
+        // Instrumento del catálogo sin activos vinculados (por ejemplo, BTC/ARS): se toma el activo base del par.
+        List<Object> nombres = em.createNativeQuery("""
+            SELECT i.nombre FROM instrumentos i WHERE LOWER(i.simbolo) = :t OR LOWER(i.nombre) = :t ORDER BY i.id
+            """).setParameter("t", t).setMaxResults(1).getResultList();
+        if (nombres.isEmpty() || nombres.get(0) == null) return Optional.empty();
+        String nombre = nombres.get(0).toString().trim();
+        String base = nombre.contains("/") ? nombre.substring(0, nombre.indexOf('/')).trim() : nombre;
+        if (base.isEmpty()) return Optional.empty();
+        if (!base.equalsIgnoreCase(t)) {
+            var activo = activoParaNoticias(base);
+            if (activo.isPresent()) return activo;
+        }
+        return Optional.of(new String[]{base, base});
+    }
+
     @SuppressWarnings("unchecked")
     public List<PrecioMercado> precios(long instrumentoId, int limite) {
         List<Object[]> rows=em.createNativeQuery("""

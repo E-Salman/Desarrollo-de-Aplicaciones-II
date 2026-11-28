@@ -49,6 +49,10 @@
 
     <div class="header-derecha">
 
+        <button id="abrirAsistente" type="button" aria-haspopup="dialog">
+            Asistente
+        </button>
+
         <button id="abrirModal" type="button">
             + Comprar
         </button>
@@ -84,6 +88,8 @@
 
     </div>
 </header>
+
+<jsp:include page="/WEB-INF/jspf/asistente.jsp" />
 
 <% if (!"dashboard".equals(activePage)) { %>
 

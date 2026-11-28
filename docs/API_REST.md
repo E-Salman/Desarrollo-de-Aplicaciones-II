@@ -81,6 +81,7 @@ El navegador revalida solo: el JavaScript no manda `If-None-Match` a mano, y `fe
 | `POST /login` | 20 intentos/min | IP | `inversorar.limite.login.ip` |
 | `/api` consultas (GET) | 300/min | usuario | `inversorar.limite.lecturas` |
 | `/api` operaciones (POST/PUT/DELETE) | 30/min | usuario | `inversorar.limite.escrituras` |
+| `POST /api/asistente` (preguntas a la IA) | 10/min | usuario | `inversorar.limite.asistente` |
 
 El dashboard hace unos 10 pedidos al abrirse y 2 cada 3 s mientras hay órdenes pendientes, unos 50 por minuto por pestaña. El límite de consultas deja margen para varias pestañas.
 

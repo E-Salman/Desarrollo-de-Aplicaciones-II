@@ -20,6 +20,7 @@ import java.util.logging.Logger;
  *       {@value #LOGIN_POR_IP_DEFECTO} por IP (frena probar muchas contraseñas o muchas cuentas).</li>
  *   <li>/api: {@value #LECTURAS_DEFECTO} consultas y {@value #ESCRITURAS_DEFECTO} operaciones (POST/PUT/DELETE)
  *       por minuto por usuario. Alcanza para el dashboard con sondeo cada 3 s y varias pestañas.</li>
+ *   <li>POST /api/asistente: {@value #ASISTENTE_DEFECTO} preguntas por minuto por usuario, en un balde propio.</li>
  * </ul>
  * Los límites se cambian con propiedades del sistema (inversorar.limite.login.email, .login.ip, .lecturas,
  * .escrituras), por ejemplo para la prueba de carga. La API responde Problem Details; el login, una página HTML.
@@ -27,12 +28,16 @@ import java.util.logging.Logger;
 @WebFilter(urlPatterns = {"/api/*", "/login"})
 public class FiltroLimitePedidos extends HttpFilter {
     private static final Logger LOG = Logger.getLogger(FiltroLimitePedidos.class.getName());
-    static final int LOGIN_POR_EMAIL_DEFECTO = 5, LOGIN_POR_IP_DEFECTO = 20, LECTURAS_DEFECTO = 300, ESCRITURAS_DEFECTO = 30;
+    static final int LOGIN_POR_EMAIL_DEFECTO = 5, LOGIN_POR_IP_DEFECTO = 20, LECTURAS_DEFECTO = 300, ESCRITURAS_DEFECTO = 30,
+            ASISTENTE_DEFECTO = 10;
+    static final String RUTA_ASISTENTE = "/api/asistente";
 
     private final LimitadorPedidos loginPorEmail = limitador("inversorar.limite.login.email", LOGIN_POR_EMAIL_DEFECTO);
     private final LimitadorPedidos loginPorIp = limitador("inversorar.limite.login.ip", LOGIN_POR_IP_DEFECTO);
     private final LimitadorPedidos lecturas = limitador("inversorar.limite.lecturas", LECTURAS_DEFECTO);
     private final LimitadorPedidos escrituras = limitador("inversorar.limite.escrituras", ESCRITURAS_DEFECTO);
+    /** Preguntas al asistente de IA: cuidan el cupo gratuito del proveedor y no comparten balde con las compras. */
+    private final LimitadorPedidos asistente = limitador("inversorar.limite.asistente", ASISTENTE_DEFECTO);
 
     private static LimitadorPedidos limitador(String propiedad, int defecto) {
         int valor = defecto;
@@ -60,20 +65,21 @@ public class FiltroLimitePedidos extends HttpFilter {
             String clave = usuario != null ? "usuario:" + usuario.getName() : "ip:" + ip;
             String metodo = pedido.getMethod();
             boolean consulta = metodo.equals("GET") || metodo.equals("HEAD") || metodo.equals("OPTIONS");
-            Duration espera = (consulta ? lecturas : escrituras).consumir(clave);
-            if (espera != null) { rechazarApi(pedido, respuesta, espera, consulta); return; }
+            LimitadorPedidos limite = consulta ? lecturas : ruta.equals(RUTA_ASISTENTE) ? asistente : escrituras;
+            Duration espera = limite.consumir(clave);
+            if (espera != null) { rechazarApi(pedido, respuesta, espera, limite, consulta ? "consultas" : limite == asistente ? "preguntas al asistente" : "operaciones"); return; }
         }
         cadena.doFilter(pedido, respuesta);
     }
 
     static long segundos(Duration espera) { return Math.max(1, (espera.toMillis() + 999) / 1000); }
 
-    private void rechazarApi(HttpServletRequest pedido, HttpServletResponse respuesta, Duration espera, boolean consulta) throws IOException {
+    private void rechazarApi(HttpServletRequest pedido, HttpServletResponse respuesta, Duration espera,
+                             LimitadorPedidos limite, String que) throws IOException {
         long s = segundos(espera);
         LOG.info("429 en " + pedido.getMethod() + " " + pedido.getRequestURI() + " (reintentar en " + s + " s)");
         var problema = Problema.de("demasiados-pedidos", "Demasiados pedidos", 429,
-                "Superaste el límite de " + (consulta ? lecturas : escrituras).porMinuto() + " "
-                        + (consulta ? "consultas" : "operaciones") + " por minuto. Probá de nuevo en " + s + " s.",
+                "Superaste el límite de " + limite.porMinuto() + " " + que + " por minuto. Probá de nuevo en " + s + " s.",
                 pedido.getRequestURI());
         respuesta.setStatus(429);
         respuesta.setHeader("Retry-After", String.valueOf(s));
