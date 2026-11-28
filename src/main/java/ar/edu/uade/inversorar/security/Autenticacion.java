@@ -1,5 +1,6 @@
 package ar.edu.uade.inversorar.security;
 
+import ar.edu.uade.inversorar.presentation.api.Problema;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.security.enterprise.AuthenticationStatus;
@@ -39,7 +40,13 @@ public class Autenticacion implements HttpAuthenticationMechanism {
         if (jwt != null) {
             if (api && !"GET".equals(request.getMethod()) && !"HEAD".equals(request.getMethod())
                     && sitio != null && !"same-origin".equals(sitio)) {
+                // Escritura desde otro sitio (posible CSRF): se rechaza con Problem Details.
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType(Problema.TIPO_MEDIO);
+                response.setCharacterEncoding("UTF-8");
+                try { response.getWriter().write(Problema.de("origen-no-permitido", "Origen no permitido", 403,
+                        "Las operaciones de la API solo se aceptan desde la propia aplicación.", request.getRequestURI()).json()); }
+                catch (java.io.IOException ignorada) { /* el estado 403 ya quedó fijado */ }
                 return AuthenticationStatus.SEND_FAILURE;
             }
             return context.notifyContainerAboutLogin(jwt.getSubject(),

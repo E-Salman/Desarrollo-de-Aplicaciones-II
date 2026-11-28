@@ -6,7 +6,11 @@ import ar.edu.uade.inversorar.business.dto.OrdenDto;
 import ar.edu.uade.inversorar.data.EstadoOrden;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import ar.edu.uade.inversorar.presentation.api.Idempotente;
+import ar.edu.uade.inversorar.presentation.api.Problemas;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.core.Response;
 import java.util.EnumSet;
 import java.util.List;
@@ -19,6 +23,7 @@ import java.util.Set;
 @Produces(MediaType.APPLICATION_JSON)
 public class OrdenResource {
     @Inject private OrdenService ordenes;
+    @Context private UriInfo uri;
 
     /** ?estado=PENDIENTE o varios separados por coma (?estado=RECHAZADA,ERROR); sin estado, todas. */
     @GET
@@ -33,11 +38,11 @@ public class OrdenResource {
     @GET @Path("{id}")
     public Response una(@PathParam("id") long id) {
         return ordenes.orden(id).map(o -> Response.ok(o).build())
-                .orElseGet(() -> Response.status(Response.Status.NOT_FOUND).entity(new CompraResource.ErrorDto("La orden no existe.")).build());
+                .orElseGet(() -> Problemas.respuesta("orden-no-encontrada", "Orden no encontrada", 404, "La orden no existe.", uri));
     }
 
     /** 202: la orden vuelve a la cola y se ejecuta después. */
-    @POST @Path("{id}/reintentar")
+    @POST @Path("{id}/reintentar") @Idempotente
     public Response reintentar(@PathParam("id") long id) {
         return Response.status(Response.Status.ACCEPTED).entity(ordenes.reintentar(id)).build();
     }

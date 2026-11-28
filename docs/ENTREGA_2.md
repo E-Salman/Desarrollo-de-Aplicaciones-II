@@ -64,4 +64,4 @@ En un WAR temporal, solo el IdentityStore asignó LECTOR a una cuenta de prueba.
 
 El 400 de USUARIO confirma que la petición autorizada alcanzó la validación de negocio. El WAR temporal se retiró y se verificó que el despliegue principal siguiera operativo. El alta web habitual asigna USUARIO.
 
-Los criterios de seguridad de la Clase 11 orientan las verificaciones de esta entrega. La autenticación no incluye renovación automática del JWT ni limitación de intentos de login.
+Los criterios de seguridad de la Clase 11 orientan las verificaciones de esta entrega. La autenticación no incluía renovación automática del JWT ni limitación de intentos de login. El límite de intentos (429) se agregó después: ver [API REST](API_REST.md).

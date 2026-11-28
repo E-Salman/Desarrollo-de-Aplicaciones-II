@@ -130,7 +130,7 @@
         if (response.status === 401 || response.status === 403) throw new Error('Tu sesión terminó. Volvé a iniciar sesión para continuar.');
         if (!response.ok) {
             const body = await response.json().catch(() => ({}));
-            throw new Error(body.error || body.message || 'No pudimos aplicar el plan. Intentá nuevamente.');
+            throw new Error(body.detail || body.mensaje || body.error || body.message || 'No pudimos aplicar el plan. Intentá nuevamente.');
         }
         return response.status === 204 ? null : response.json();
     };

@@ -153,6 +153,25 @@ function renderDistribucion(posiciones) {
         leyenda.appendChild(nota);
     }
 }
+  // Idempotency-Key: el mismo pedido (mismo cuerpo) reusa su clave hasta tener respuesta. Si se corta la red y el
+  // usuario reintenta, el servidor devuelve la orden ya creada en lugar de duplicarla.
+  const clavesIdempotencia = new Map();
+  function nuevaClave() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+  }
+  async function enviarOperacion(path, datos) {
+    const cuerpo = JSON.stringify(datos);
+    if (!clavesIdempotencia.has(cuerpo)) clavesIdempotencia.set(cuerpo, nuevaClave());
+    try {
+      const r = await pedir(path, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": clavesIdempotencia.get(cuerpo) }, body: cuerpo });
+      clavesIdempotencia.delete(cuerpo); return r;
+    } catch (e) {
+      if (!(e instanceof TypeError)) clavesIdempotencia.delete(cuerpo); // hubo respuesta: la clave ya se usó
+      throw e;
+    }
+  }
   async function pedir(path, options) {
     const response = await fetch(ctx + "/api" + path, options);
     if (!response.ok) {
@@ -161,7 +180,7 @@ function renderDistribucion(posiciones) {
         throw new Error("Tu sesión venció. Iniciá sesión nuevamente.");
       }
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.mensaje || "No se pudo completar la operación (" + response.status + ").");
+      throw new Error(error.detail || error.mensaje || "No se pudo completar la operación (" + response.status + ").");
     }
     return { status: response.status, body: await response.json() };
   }
@@ -282,8 +301,7 @@ function renderDistribucion(posiciones) {
   $("formCompra").onsubmit = async e => {
     e.preventDefault(); const boton = $("guardarCompra"); boton.disabled = true; $("error").textContent = "";
     try {
-      const r = await pedir("/compras", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker: $("ticker").value, cantidad: $("cantidad").value, precioUnitario: $("precio").value, fecha: $("fecha").value }) });
+      const r = await enviarOperacion("/compras", { ticker: $("ticker").value, cantidad: $("cantidad").value, precioUnitario: $("precio").value, fecha: $("fecha").value });
       modal.close(); await ordenRegistrada(r);
     } catch(e) { $("error").textContent = e.message; }
     finally { boton.disabled = false; }
@@ -396,8 +414,7 @@ function renderDistribucion(posiciones) {
   $("formVenta").onsubmit = async e => {
     e.preventDefault(); const boton = $("guardarVenta"); boton.disabled = true; $("errorVenta").textContent = "";
     try {
-      const r = await pedir("/ventas", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker: $("tickerVenta").value, cantidad: $("cantidadVenta").value, precioUnitario: $("precioVenta").value, fecha: $("fechaVenta").value }) });
+      const r = await enviarOperacion("/ventas", { ticker: $("tickerVenta").value, cantidad: $("cantidadVenta").value, precioUnitario: $("precioVenta").value, fecha: $("fechaVenta").value });
       modalVenta.close(); await ordenRegistrada(r);
     } catch(e) { $("errorVenta").textContent = e.message; }
     finally { boton.disabled = false; }

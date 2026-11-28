@@ -1,7 +1,7 @@
 package ar.edu.uade.inversorar.presentation;
 
 import ar.edu.uade.inversorar.business.CompraService;
-import ar.edu.uade.inversorar.business.ReglaNegocioException;
+import ar.edu.uade.inversorar.presentation.api.Idempotente;
 import ar.edu.uade.inversorar.business.VentaService;
 import ar.edu.uade.inversorar.business.dto.CompraRequest;
 import ar.edu.uade.inversorar.business.dto.VentaRequest;
@@ -21,30 +21,24 @@ public class CompraResource {
     @GET @Path("instrumentos") public Response instrumentos() { return Response.ok(compraService.listarInstrumentos()).build(); }
     @Inject private PortfolioSesion portfolioSesion;
     @Context private HttpServletRequest httpRequest;
-    @POST @Path("compras") @Consumes(MediaType.APPLICATION_JSON)
+    @POST @Path("compras") @Idempotente @Consumes(MediaType.APPLICATION_JSON)
     public Response comprar(CompraRequest request) {
         // Validar la identidad de la conversación antes de persistir la compra.
         httpRequest.getSession(true);
         var portfolioService = portfolioSesion.servicio(httpRequest.getUserPrincipal().getName());
-        try {
-            var orden = compraService.registrarCompra(request);
-            return orden != null ? aceptada(orden) : Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build();
-        }
-        catch (ReglaNegocioException e) { return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorDto(e.getMessage())).build(); }
+        // Una regla incumplida lanza ReglaNegocioException: ReglaNegocioMapper la convierte en 400 Problem Details.
+        var orden = compraService.registrarCompra(request);
+        return orden != null ? aceptada(orden) : Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build();
     }
-    @POST @Path("ventas") @Consumes(MediaType.APPLICATION_JSON)
+    @POST @Path("ventas") @Idempotente @Consumes(MediaType.APPLICATION_JSON)
     public Response vender(VentaRequest request) {
         httpRequest.getSession(true);
         var portfolioService = portfolioSesion.servicio(httpRequest.getUserPrincipal().getName());
-        try {
-            var orden = ventaService.registrarVenta(request);
-            return orden != null ? aceptada(orden) : Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build();
-        }
-        catch (ReglaNegocioException e) { return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorDto(e.getMessage())).build(); }
+        var orden = ventaService.registrarVenta(request);
+        return orden != null ? aceptada(orden) : Response.status(Response.Status.CREATED).entity(portfolioService.obtenerResumen()).build();
     }
     /** 202 Accepted: la orden quedó en la cola; su estado se consulta en /ordenes/{id}. */
     private static Response aceptada(ar.edu.uade.inversorar.business.dto.OrdenDto orden) {
         return Response.status(Response.Status.ACCEPTED).entity(orden).header("Location", "ordenes/" + orden.id).build();
     }
-    public static class ErrorDto { public String mensaje; public ErrorDto(String mensaje) { this.mensaje = mensaje; } }
 }

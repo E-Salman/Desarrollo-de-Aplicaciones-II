@@ -11,6 +11,7 @@ Componentes Jakarta EE 10 implementados en capas: **Compra** y **Venta** (EJB `@
 - [Requisitos y checklist](docs/REQUISITOS.md)
 - [Funcionamiento de la venta](docs/VENTA.md)
 - [Documento técnico](docs/TECNICO.md) (el PDF en `docs/TECNICO.pdf` quedó desactualizado; no se lo considera vigente)
+- [API REST: Problem Details, Idempotency-Key, ETag y 429](docs/API_REST.md)
 - [Integraciones externas: SOAP con el mercado legado, REST con Binance, timeout y fallback](docs/INTEGRACIONES_EXTERNAS.md)
 - [Integración con Login, BD y otras ramas](docs/INTEGRACION.md)
 - [Esquema MySQL completo](docs/MYSQL_ESQUEMA.md) y [configuración/pruebas MySQL](docs/MYSQL.md)

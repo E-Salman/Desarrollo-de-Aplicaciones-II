@@ -50,12 +50,32 @@
     // API
     // =========================
 
+    // Idempotency-Key en compras y ventas: el mismo pedido (mismo cuerpo) reusa su clave hasta tener respuesta,
+    // así un reintento tras un corte de red no duplica la orden.
+    const clavesIdempotencia = new Map();
+
+    function nuevaClave() {
+        if (crypto.randomUUID) return crypto.randomUUID();
+        const b = crypto.getRandomValues(new Uint8Array(16));
+        return Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+    }
+
     async function api(path, options) {
+
+        const operacion = options?.method === "POST" && (path === "/compras" || path === "/ventas");
+
+        if (operacion) {
+            if (!clavesIdempotencia.has(options.body)) clavesIdempotencia.set(options.body, nuevaClave());
+            options = { ...options, headers: { ...options.headers, "Idempotency-Key": clavesIdempotencia.get(options.body) } };
+        }
 
         const response = await fetch(
             ctx + "/api" + path,
             options
         );
+
+        // Hubo respuesta: esa clave ya se usó (si falló la red, fetch lanzó antes y la clave se conserva).
+        if (operacion) clavesIdempotencia.delete(options.body);
 
         if (response.status === 401) {
             window.location.assign(ctx + "/login");
@@ -68,6 +88,7 @@
                 .catch(() => ({}));
 
             throw new Error(
+                error.detail ||
                 error.mensaje ||
                 "No se pudo completar la operación (" +
                 response.status + ")."
